@@ -41,6 +41,10 @@ def _sanitize_for_openai(msgs: list[AnyMessage]) -> list[AnyMessage]:
     return cleaned
 
 # ---------- Graph State (new reducer style) ----------
+from typing import Any, Dict, Literal
+from typing_extensions import NotRequired
+from langgraph.graph import MessagesState
+
 class State(MessagesState):
     user_question: str
 
@@ -52,10 +56,17 @@ class State(MessagesState):
     # handy optional filters
     location_id: NotRequired[str]
     camera_id: NotRequired[str]
-    route: NotRequired[str] 
-    
-    # Metadata
+
+    # routing
+    route: NotRequired[str]
     router_decision: NotRequired[Dict[str, Any]]
+
+    # audit / identity metadata
+    user_id: NotRequired[str]
+    user_role: NotRequired[Literal["viewer","operator","supervisor","admin"]]
+    session_id: NotRequired[str]     # stable across a CLI/app session
+    request_id: NotRequired[str]     # new per user turn
+
 
 # ---------- YAML spec ----------
 class AgentSpec(BaseModel):

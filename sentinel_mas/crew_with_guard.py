@@ -9,6 +9,10 @@ from sentinel_mas.tools.sop_tools import get_sop, search_sop
 from sentinel_mas.tools.events_tools import list_anomaly_event, who_entered_zone
 from sentinel_mas.tools.tracking_tools import send_track, send_cancel, get_track_status, get_person_insight
 
+# Policy Sentinel
+from sentinel_mas.policy_sentinel.executor import PolicyExecutor
+
+
 from .crew_agents import State, CrewAgent
 from config import OPENAI_API_KEY, OPENAI_MODEL
 
@@ -25,10 +29,12 @@ events_agent   = CrewAgent("events_agent", "cctv_events.yaml", tools=event_tools
 tracking_agent = CrewAgent("tracking_agent", "tracking_ops.yaml", tools=tracking_tools, temperature=0.05, max_tokens=300)
 
 #~~~ ToolNodes for each agent
-event_tool_node = ToolNode(event_tools)
-router_tool_node = ToolNode(router_tools)
-faq_tool_node = ToolNode(faq_tools)
-tracking_tool_node = ToolNode(tracking_tools)
+event_tool_node= PolicyExecutor(route="EVENTS", tools=event_tools, single_call=True, freeze_time_window=True)
+faq_tool_node = PolicyExecutor(route="SOP", tools=faq_tools, single_call=True, freeze_time_window=True)
+tracking_tool_node = PolicyExecutor(route="TRACKING", tools=tracking_tools, single_call=True, freeze_time_window=True)
+
+# router_tool_node = ToolNode(router_tools)
+
 
 
 def parse_time_node(state):
@@ -64,6 +70,7 @@ def CreateCrew():
     graph = register_agent_and_tools(graph, "events_agent", events_agent, event_tool_node)
     graph = register_agent_and_tools(graph, "tracking_agent", tracking_agent, tracking_tool_node)
 
+
     graph.add_node("router_agent", router_agent)
     graph.add_node("parse_time_node", parse_time_node)
 
@@ -81,7 +88,7 @@ def CreateCrew():
     graph.add_edge("parse_time_node", "events_agent")
 
     for agent_name in ['faq_agent', 'events_agent', 'tracking_agent']:
-        graph.set_finish_point(agent_name)
+        graph.add_edge(agent_name, END)
 
     return graph.compile()
 

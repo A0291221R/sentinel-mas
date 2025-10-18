@@ -9,7 +9,7 @@ from langchain_core.tools import tool
 
 from ..utils import embed_text_unit
 
-DSN = os.getenv('KB_DB_URL', 'postgresql://postgres:postgres@localhost:5432/sentinel')
+DSN = os.getenv('SENTINEL_DB_URL', 'postgresql://postgres:postgres@localhost:5432/sentinel')
 
 
 # --------- helpers ----------

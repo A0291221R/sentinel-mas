@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 # from langchain.tools import tool
 
-DSN = os.getenv('CCV_DB_URL', 'postgresql://postgres:postgres@localhost:5432/sentinel')
+DSN = os.getenv('SENTINEL_DB_URL', 'postgresql://postgres:postgres@localhost:5432/sentinel')
 
 def _rows(cursor) -> List[dict]:
     cols = [d[0] for d in cursor.description]
