@@ -1,16 +1,5 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-backup
-*.pdf
-*.toml
-*.lock
-.python-version
-# Virtual environments
-.venv
-.env
-.vscode/
+__pycache__
+.vscode
+uv.lock
+*backup
+experiments

@@ -1,0 +1,17 @@
+redaction:
+  max_depth: 3
+
+  # Keys or substrings that must always be masked
+  keys:
+    - password
+    - token
+    - secret
+    - auth
+    - key
+    - resolved_id
+    - track_id
+    - person_id
+    - identity_id
+    - bbox
+    - face_image
+    - frame

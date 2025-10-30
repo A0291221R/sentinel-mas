@@ -1,7 +1,12 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+import time
+
+t0 = time.perf_counter()
+print(f'start loading SentenceTransformer...')
 MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+print(f'Time Elapsed: {(time.perf_counter() - t0): .2f}s')
 
 def embed_text_unit(query: str):
     emb = MODEL.encode(query).astype("float32")

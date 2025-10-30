@@ -13,6 +13,7 @@ def load_langchain_decorated_tools() -> Dict[str, LCBaseTool]:
             val = getattr(module, attr)
             if isinstance(val, LCBaseTool):
                 reg[val.name] = val
+
     return reg
 
 def load_tools() -> Dict[str, LCBaseTool]:

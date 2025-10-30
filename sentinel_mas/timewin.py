@@ -169,15 +169,20 @@ def resolve_time_window(text: str, base_date: Optional[datetime] = None) -> Tupl
         label = _format_label(start, end)
         return int(start.timestamp()*1000), int(end.timestamp()*1000), label
 
-    if ymd:  # we detected an explicit date
+    # --- 5) Whole-day fallbacks
+    # Explicit date with no time → full day
+    if ymd:
         start = date_midnight.replace(hour=0, minute=0)
         end   = date_midnight + timedelta(days=1)  # next midnight
         label = _format_label(start, end)
         return int(start.timestamp()*1000), int(end.timestamp()*1000), label
 
-    # # --- 5) Fallback: 2-hour noon window
-    # start = date_midnight.replace(hour=12, minute=0)
-    # end   = start + timedelta(hours=2)
-    # label = _format_label(start, end)
-    # return int(start.timestamp()*1000), int(end.timestamp()*1000), label
+    # Relative day token (today/yesterday/tomorrow) with no time → full day
+    if RE_TODAY.search(t) or RE_YESTERDAY.search(t) or RE_TOMORROW.search(t):
+        start = date_midnight.replace(hour=0, minute=0)
+        end   = date_midnight + timedelta(days=1)
+        label = _format_label(start, end)
+        return int(start.timestamp()*1000), int(end.timestamp()*1000), label
+    
+    # --- 6) No time window detected
     raise ValueError("No time window detected")

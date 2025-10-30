@@ -1,5 +1,6 @@
 import argparse, psycopg
 import numpy as np
+import time
 
 from sentence_transformers import SentenceTransformer  # or OpenAI embeddings
 MODEL = SentenceTransformer("all-MiniLM-L6-v2")
@@ -27,14 +28,17 @@ def search_sop_cosine(query: str, k: int = 6):
             for (i, s, t, x, sc) in cur.fetchall()
         ]
 
-
+# uv run ./scripts/query_kb.py --query "How to escalate level-2 anomaly"
+# retrieval time:  0.09s
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--query', type=str, required=True)
     parser.add_argument('--k', type=int, default=6)
     args = parser.parse_args()
 
+    t0 = time.perf_counter()
     hits = search_sop_cosine(args.query, args.k)
+    print(f'retrieval time: {(time.perf_counter() - t0): .2f}s')
     retrieved = [
         f"- [{h['section']}] {h['title']}: {h['text'][:160]} (score {h['score']:.2f})"
         for h in hits

@@ -1,7 +1,16 @@
-import os
+from __future__ import annotations
 from dotenv import load_dotenv
 
+import os
+
 load_dotenv(override=True)
+
+
+SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
+SENTINEL_DB_URL = os.getenv("SENTINEL_DB_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/sentinel")
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")

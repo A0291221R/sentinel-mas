@@ -1,0 +1,42 @@
+# sentinel_mas/policy/rbac.yaml
+version: "1.1"
+
+roles:
+  operator:
+    routes_allowed: [SOP, EVENTS, TRACKING]
+    tools_allowed:
+      - who_entered_zone
+      - list_anomaly_event
+      - send_track
+      - send_cancel
+      - get_track_status
+      - get_person_insight
+      - search_sop
+      - get_sop
+
+  admin:
+    routes_allowed: [SOP, EVENTS]
+    tools_allowed:
+      - who_entered_zone
+      - list_anomaly_event
+      - get_person_insight
+      - search_sop
+      - get_sop
+
+  supervisor:
+    routes_allowed: [SOP, EVENTS, TRACKING]
+    tools_allowed:
+      - who_entered_zone
+      - list_anomaly_event
+      - send_track
+      - send_cancel
+      - get_track_status
+      - get_person_insight
+      - search_sop
+      - get_sop
+
+  viewer:
+    routes_allowed: [SOP]
+    tools_allowed:
+      - search_sop
+      - get_sop

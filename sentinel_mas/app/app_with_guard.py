@@ -1,9 +1,12 @@
 from langchain_core.messages import HumanMessage
-from config import OPENAI_API_KEY, OPENAI_MODEL
-from sentinel_mas.crew_with_guard import CreateCrew
-from sentinel_mas.crew_agents import State
-from langsmith import Client, tracing_context
-from sentinel_mas.app_runtime import start_runtime
+
+# from sentinel_mas.memory.session_store import append_user
+from sentinel_mas.policy_sentinel.runtime import context_scope
+from ..config import OPENAI_API_KEY, OPENAI_MODEL
+from sentinel_mas.agents.crew_with_guard import CreateCrew
+from sentinel_mas.agents.crew_agents import State
+# from langsmith import Client, tracing_context
+# from sentinel_mas.runtime.app_runtime import start_runtime
 
 
 import time, uuid, getpass
@@ -11,14 +14,14 @@ import time, uuid, getpass
 app = CreateCrew()
 
 # # # Print workflow
-png_bytes = app.get_graph().draw_mermaid_png()           # returns PNG bytes
-with open("sentinel_flow.png", "wb") as f:
-    f.write(png_bytes)
+# png_bytes = app.get_graph().draw_mermaid_png()           # returns PNG bytes
+# with open("sentinel_flow.png", "wb") as f:
+#     f.write(png_bytes)
 
 if __name__ == "__main__":
    
     # 1) Boot runtime (loads @tool modules, validates policy allowlist)
-    start_runtime(with_metrics=False)   # keep False; you’ll add Prom later
+    # start_runtime(with_metrics=False)   # keep False; you’ll add Prom later
 
     # 2) Basic session context (persist for the whole CLI session)
     session_id = f"cli-{uuid.uuid4().hex[:10]}"
@@ -50,14 +53,12 @@ if __name__ == "__main__":
             print('Bye!')
             break
         
-        state['user_question'] = user_input
-        
         # 3) Per-request context
         state['user_question'] = user_input
         state['request_id'] = f"req-{uuid.uuid4().hex[:10]}"  # new ID each turn
 
-
         t0 = time.perf_counter()
+        
         result = app.invoke(state)
         print(f'Elapsed Time: {(time.perf_counter() - t0) : .2f}s')
         print(result["messages"][-1].content)

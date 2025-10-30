@@ -4,7 +4,7 @@ import os, time, httpx
 from langchain_core.tools import tool
 # from langchain.tools import tool
 
-SENTINEL_BASE_URL = os.getenv("SENTINEL_BASE_URL", "http://localhost:8000")
+CENTRAL_URL = os.getenv("CENTRAL_URL", "http://sentinel-central:8000")
 SENTINEL_API_KEY  = os.getenv("SENTINEL_API_KEY")
 DEFAULT_TIMEOUT = 5.0
 MAX_RETRIES = 2
@@ -17,7 +17,7 @@ def _headers() -> Dict[str, str]:
     return h
 
 def _request(method: str, path: str, json: Optional[dict] = None, timeout: float = DEFAULT_TIMEOUT) -> Dict[str, Any]:
-    url = f"{SENTINEL_BASE_URL.rstrip('/')}{path}"
+    url = f"{CENTRAL_URL.rstrip('/')}{path}"
     for attempt in range(MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=timeout, headers=_headers()) as client:

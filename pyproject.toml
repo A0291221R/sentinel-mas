@@ -1,0 +1,49 @@
+[project]
+name = "sentinel-mas"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.119.0",
+    "fastmcp>=2.12.5",
+    "gradio>=5.49.1",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "langchain>=0.3.27",
+    "langchain-anthropic>=1.0.0",
+    "langchain-community>=0.3.31",
+    "langchain-core>=0.3.79",
+    "langchain-mcp-adapters>=0.1.11",
+    "langchain-openai>=0.3.35",
+    "langchain-tavily>=0.2.12",
+    "langgraph>=0.6.10",
+    "langgraph-cli[inmem]>=0.4.3",
+    "matplotlib>=3.10.7",
+    "openai>=2.3.0",
+    "pandas>=2.3.3",
+    "pip>=25.2",
+    "psycopg[binary]>=3.2.10",
+    "pushover>=0.5",
+    "pydantic>=2",
+    "python-dateutil>=2.9.0.post0",
+    "pytz>=2025.2",
+    "pyyaml>=6.0.3",
+    "requests>=2.32.5",
+    "sentence-transformers>=5.1.1",
+    "sqlalchemy>=2.0.44",
+    "streamlit>=1.50.0",
+    "tavily-python>=0.7.12",
+    "tiktoken>=0.12.0",
+    "uvicorn[standard]>=0.37.0",
+    "yfinance>=0.2.66",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sentinel_mas*"]
+exclude = ["ui_app*", "images*", "scripts*", "notebooks*", "tests*", "docs*"]

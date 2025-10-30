@@ -1,19 +1,37 @@
 langgraph
 langchain
+langchain-core
+# langchain-community
 langchain-openai
+# langgraph-cli[inmem]
+# langchain-tavily
+# tavily-python
 
+# ---- Service runtime ----
+fastapi
+uvicorn[standard]
+httpx
+# pandas
+
+# ---- Providers / utils ----
+openai
+# tiktoken
 pydantic>=2
 pyyaml
 jinja2
-reportlab
 requests
-langchain-tavily
-pushover
-tavily-python
-langgraph-cli[inmem]
-gradio
-
-psycopg
-sentence-transformers
+# pushover
+# gradio
 python-dateutil
 pytz
+
+# ---- DB / vectors / ML ----
+psycopg[binary]
+sentence-transformers
+SQLAlchemy
+
+# streamlit
+
+# MCP Server
+fastmcp
+langchain-mcp-adapters

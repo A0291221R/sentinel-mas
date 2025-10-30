@@ -4,17 +4,14 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_core.messages import HumanMessage
 
 # from sentinel_mas.tools import get_tracks
+from sentinel_mas.agents.loader import load_agent_configs
 from sentinel_mas.timewin import resolve_time_window
 from sentinel_mas.tools.sop_tools import get_sop, search_sop
 from sentinel_mas.tools.events_tools import list_anomaly_event, who_entered_zone
 from sentinel_mas.tools.tracking_tools import send_track, send_cancel, get_track_status, get_person_insight
 
-# Policy Sentinel
-from sentinel_mas.policy_sentinel.executor import PolicyExecutor
-
-
 from .crew_agents import State, CrewAgent
-from config import OPENAI_API_KEY, OPENAI_MODEL
+from sentinel_mas.config import OPENAI_API_KEY, OPENAI_MODEL
 
 # ~~~ Per-agent tool permissions ~~~
 router_tools =[]
@@ -23,18 +20,16 @@ event_tools = [list_anomaly_event, who_entered_zone]
 tracking_tools = [send_track, send_cancel, get_track_status, get_person_insight]
 
 #~~~ Agents ~~~
-router_agent   = CrewAgent("router_agent", "router.yaml", tools=router_tools, temperature=0.00, max_tokens=120)
-faq_agent      = CrewAgent("faq_agent", "faq_sop.yaml", tools=faq_tools, temperature=0.05, max_tokens=350)
-events_agent   = CrewAgent("events_agent", "cctv_events.yaml", tools=event_tools, temperature=0.05, max_tokens=1300)
-tracking_agent = CrewAgent("tracking_agent", "tracking_ops.yaml", tools=tracking_tools, temperature=0.05, max_tokens=300)
+router_agent   = CrewAgent("router_agent")
+faq_agent      = CrewAgent("faq_agent")
+events_agent   = CrewAgent("events_agent")
+tracking_agent = CrewAgent("tracking_agent")
 
 #~~~ ToolNodes for each agent
-event_tool_node= PolicyExecutor(route="EVENTS", tools=event_tools, single_call=True, freeze_time_window=True)
-faq_tool_node = PolicyExecutor(route="SOP", tools=faq_tools, single_call=True, freeze_time_window=True)
-tracking_tool_node = PolicyExecutor(route="TRACKING", tools=tracking_tools, single_call=True, freeze_time_window=True)
-
-# router_tool_node = ToolNode(router_tools)
-
+event_tool_node = ToolNode(event_tools)
+router_tool_node = ToolNode(router_tools)
+faq_tool_node = ToolNode(faq_tools)
+tracking_tool_node = ToolNode(tracking_tools)
 
 
 def parse_time_node(state):
@@ -59,6 +54,10 @@ def register_agent_and_tools(graph: StateGraph, agent_name: str, agent_node, too
         agent_name, tools_condition,
         {"tools": tools_name, END: end_node}
     )
+    # graph.add_conditional_edges(
+    #     tools_name, tools_condition,
+    #     {"tools": tools_name, END: agent_name}
+    # )
     graph.add_edge(tools_name, agent_name)
     return graph
     
@@ -69,7 +68,6 @@ def CreateCrew():
     graph = register_agent_and_tools(graph, "faq_agent", faq_agent, faq_tool_node)
     graph = register_agent_and_tools(graph, "events_agent", events_agent, event_tool_node)
     graph = register_agent_and_tools(graph, "tracking_agent", tracking_agent, tracking_tool_node)
-
 
     graph.add_node("router_agent", router_agent)
     graph.add_node("parse_time_node", parse_time_node)
@@ -88,7 +86,7 @@ def CreateCrew():
     graph.add_edge("parse_time_node", "events_agent")
 
     for agent_name in ['faq_agent', 'events_agent', 'tracking_agent']:
-        graph.add_edge(agent_name, END)
+        graph.set_finish_point(agent_name)
 
     return graph.compile()
 

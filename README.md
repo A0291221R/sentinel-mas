@@ -45,7 +45,22 @@ uv run app_ui.py
 ~~~
 
 # create & store kb
-uv run ./scripts/create_kb.py --kb sentinel_mas/kb/sentinel_sop_kb.jsonl 
+uv run ./scripts/create_kb.py --kb sentinel_mas/data/kb/sentinel_sop_kb.jsonl 
 
 # query kb
 uv run ./scripts/query_kb.py --query "How to escalate level-2 anomaly"
+
+
+# Grafana
+## 1️⃣ Requests per second by route
+sum by (path, method) (rate(http_requests_total[1m]))
+
+## 2️⃣ Error rate (4xx & 5xx)
+sum by (status) (rate(http_requests_total{status=~"4..|5.."}[5m]))
+
+## 3️⃣ P95 Latency per route
+histogram_quantile(0.95, sum by (le, path) (rate(http_request_duration_seconds_bucket[5m])))
+
+## 4️⃣ Average latency
+sum(rate(http_request_duration_seconds_sum[5m])) 
+/ sum(rate(http_request_duration_seconds_count[5m]))

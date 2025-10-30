@@ -20,6 +20,7 @@ def to_unit_vec(v: list[float] | np.ndarray) -> list[float]:
         raise ValueError("Embedding norm is ~0 (cannot normalize).")
     return (a / n).tolist()
 
+# uv run ./scripts/create_kb.py --kb sentinel_mas/data/kb/sentinel_sop_kb.jsonl 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--kb', type=str, required=True)

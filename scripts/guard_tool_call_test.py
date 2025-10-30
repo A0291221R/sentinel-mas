@@ -144,8 +144,6 @@ def guard_tool_call(
     *,
     request_id: Optional[str] = None,
     policy: Optional[Dict[str, set]] = None,
-    audit_writer: Optional[Callable[[Dict[str, Any]], None]] = None,
-    arg_sanitizer: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Enforce route/role policy and ALWAYS audit the decision.
