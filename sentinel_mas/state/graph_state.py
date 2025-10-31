@@ -50,38 +50,3 @@ class GraphState(MessagesState):
     audit_trail: List[Dict[str, Any]]
 
     halt: NotRequired[bool]
-
-# class GraphState(TypedDict, total=False):
-#     # --- identity / audit ---
-#     trace_id: str
-#     request_id: str
-#     session_id: str
-#     user_id: str
-#     user_role: str
-#     timestamp_utc: str
-
-#     # --- user question & history ---
-#     user_input: str
-#     history: List[Dict[str, str]]
-
-#     # --- routing ---
-#     route: Literal["TRACKING","EVENTS","SOP"]
-#     route_confidence: float
-#     route_reasoning: str
-#     agent_name: str
-
-#     # --- tool exec logs ---
-#     tool_calls: List[ToolCallRecord]
-
-#     # --- final answer ---
-#     agent_output: str
-#     status: Literal["OK","FAILED"]
-#     error_msg: Optional[str]
-
-#     # --- timeline ---
-#     trace: List[TraceEvent]
-
-#     # --- perf ---
-#     started_at_ms: float
-#     ended_at_ms: float
-#     latency_ms: int

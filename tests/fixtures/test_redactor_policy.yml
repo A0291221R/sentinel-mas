@@ -1,0 +1,7 @@
+redaction:
+  max_depth: 3
+  keys:
+    - password
+    - token
+    - secret
+    - resolved_id

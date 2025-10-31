@@ -25,6 +25,7 @@ requests
 python-dateutil
 pytz
 
+
 # ---- DB / vectors / ML ----
 psycopg[binary]
 sentence-transformers
@@ -35,3 +36,5 @@ SQLAlchemy
 # MCP Server
 fastmcp
 langchain-mcp-adapters
+
+# uv pip install pytest pytest-asyncio pytest-cov pytest-mock freezegun httpx pyyaml

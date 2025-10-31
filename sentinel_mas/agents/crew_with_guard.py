@@ -14,7 +14,7 @@ from sentinel_mas.tools.tracking_tools import send_track, send_cancel, get_track
 
 # Policy Sentinel
 from sentinel_mas.policy_sentinel.secure_tool_node import SecureToolNode
-from .crew_agents import State, CrewAgent
+from sentinel_mas.agents.crew_agents import State, CrewAgent
 
 # ~~~ Per-agent tool permissions ~~~
 router_tools =[]
