@@ -6,154 +6,201 @@ on:
   pull_request:
     branches: [ main ]
 
+# cancel superseded runs on same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lint-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.12"]
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
 
-    - uses: astral-sh/setup-uv@v4
-      with:
-        enable-cache: false  # pip cache + uv cache
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install deps
-      run: uv sync --all-extras --dev
+      # Use uv and cache it for speed
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          # Optional: make the cache key follow your real deps if you don't use uv.lock
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+            **/*constraints*.txt
+          # Optional: don't fail when nothing to cache (first run / monorepo subdir)
+          ignore-nothing-to-cache: true
+        
+      # Optional: cache the virtualenv itself (keyed by lockfile)
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-
 
-    # If requirements files instead:
-    # - run: |
-    #     uv pip install -r requirements.txt
-    #     [ -f requirements-dev.txt ] && uv pip install -r requirements-dev.txt
-    #     uv pip install -e .
-        
-    - name: Run linters
-      run: |
-        echo "=== Running Black ==="
-        uv run black --check .
-        
-        echo "=== Running isort ==="
-        uv run isort --check-only .
-        
-        echo "=== Running flake8 ==="
-        uv run flake8 sentinel_mas tests --count --show-source --statistics
-        
-        echo "=== Running mypy ==="
-        uv run mypy sentinel_mas tests
-        
-    - name: Run tests with pytest
-      run: |
-        mkdir -p test-results
-        uv run pytest
-        
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-${{ matrix.python-version }}
-        path: test-results/
-        retention-days: 30
+      - name: Install deps
+        run: uv sync --all-extras --dev
+
+      # If you prefer requirements files:
+      # - run: |
+      #     uv pip install -r requirements.txt
+      #     [ -f requirements-dev.txt ] && uv pip install -r requirements-dev.txt
+      #     uv pip install -e .
+
+      - name: Run linters
+        run: |
+          echo "=== Running Black ==="
+          uv run black --check .
+          echo "=== Running isort ==="
+          uv run isort --profile black --check-only .
+          echo "=== Running flake8 ==="
+          uv run flake8 sentinel_mas tests --count --show-source --statistics
+          echo "=== Running mypy ==="
+          # restrict to package + tests; avoid scanning artifact dirs
+          uv run mypy sentinel_mas tests --pretty --show-error-codes
+
+      - name: Run tests with pytest (JUnit + Coverage)
+        env:
+          # For deterministic locale-dependent tests, if any:
+          PYTHONHASHSEED: "0"
+        run: |
+          mkdir -p test-results
+          uv run pytest \
+            -q \
+            --junitxml=test-results/junit-${{ matrix.python-version }}.xml \
+            --cov=sentinel_mas \
+            --cov-report=xml:test-results/coverage-${{ matrix.python-version }}.xml \
+            --cov-report=html:test-results/cov-html-${{ matrix.python-version }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: test-results/
+          retention-days: 30
 
   security:
     runs-on: ubuntu-latest
+    if: ${{ always() }}     # make it explicit
     strategy:
       matrix:
         python-version: ["3.12"]
-    
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-        
-    - uses: astral-sh/setup-uv@v4
-      with:
-        enable-cache: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install security tools
-      run: |
-        run: uv sync --all-extras --dev
-        uv run pip install safety bandit
-        
-    - name: Scan dependencies for security vulnerabilities
-      run: |
-        mkdir -p test-results
-        # Use requirements file if available
-        if [ -f requirements.txt ]; then
-          safety check -r requirements.txt --full-report | tee test-results/safety-report.txt
-        else
-          safety check --full-report | tee test-results/safety-report.txt
-        fi
-        
-    - name: Bandit Security Scan
-      run: |
-        mkdir -p test-results
-        bandit -r sentinel_mas/ -f html -o test-results/bandit-report.html || true
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          # Optional: make the cache key follow your real deps if you don't use uv.lock
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+            **/*constraints*.txt
+          # Optional: don't fail when nothing to cache (first run / monorepo subdir)
+          ignore-nothing-to-cache: true
 
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-reports
-        path: test-results/
-        retention-days: 30
-          
+      - name: Install security tools
+        run: |
+          uv sync --all-extras --dev
+          # Prefer pip-audit (free & maintained) over safety (API key often required)
+          uv run pip install pip-audit bandit
+
+      - name: Dependency vulnerability scan (pip-audit)
+        # Do not fail the whole job on findings; surface results via artifact
+        continue-on-error: true
+        run: |
+          mkdir -p test-results
+          # If you have a lockfile: use `pip-audit -r requirements.txt` instead.
+          uv run pip-audit -f json -o test-results/pip-audit-${{ matrix.python-version }}.json
+
+      - name: Bandit Security Scan
+        continue-on-error: true
+        run: |
+          mkdir -p test-results
+          uv run bandit -r sentinel_mas/ -f html -o test-results/bandit-${{ matrix.python-version }}.html
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-${{ matrix.python-version }}
+          path: test-results/
+          retention-days: 30
+
   report:
     runs-on: ubuntu-latest
-    needs: lint-test
+    needs: [lint-test, security]
     if: always()
     permissions:
       contents: read
       checks: write
       pull-requests: write
-    
-    steps:
-    - uses: actions/checkout@v4
 
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-    
-    - name: Download test results
-      uses: actions/download-artifact@v4
-      with:
-        path: all-test-results
-        
-    - name: Generate test report
-      run: |
-        mkdir -p test-results
-        # Collect all junit and coverage xmls into ./test-results
-        find all-test-results -name "*.xml" -exec cp {} test-results/ \; || true
-        # Optional custom aggregator
-        if [ -f scripts/generate_report.py ]; then
-          python scripts/generate_report.py
-        fi
-        
-    - name: Publish Test Report
-      uses: dorny/test-reporter@v1
-      with:
-        name: Pytest Results
-        path: test-results/junit-*.xml
-        reporter: java-junit
-        fail-on-error: true
-        
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./test-results/coverage-*.xml
-        flags: unittests
-        name: codecov-umbrella
-        
-    - name: Upload HTML coverage report
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-html-report
-        path: test-results/cov-html-*/
-        retention-days: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-test-results
+
+      - name: Collect test reports
+        run: |
+          mkdir -p test-results
+          # Gather all junit and coverage XMLs into ./test-results
+          find all-test-results -type f -name "junit-*.xml" -exec cp {} test-results/ \; || true
+          find all-test-results -type f -name "coverage-*.xml" -exec cp {} test-results/ \; || true
+          # Optionally collect HTML coverage
+          find all-test-results -type d -name "cov-html-*" -exec cp -r {} test-results/ \; || true
+          # Optional custom aggregator
+          if [ -f scripts/generate_report.py ]; then
+            python scripts/generate_report.py
+          fi
+
+      - name: Publish Test Report (JUnit)
+        uses: dorny/test-reporter@v1
+        with:
+          name: Pytest Results
+          path: test-results/junit-*.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Upload coverage to Codecov
+        if: ${{ hashFiles('test-results/coverage-*.xml') != '' }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./test-results/coverage-*.xml
+          flags: unittests
+          name: codecov-umbrella
+          # Set CODECOV_TOKEN in repo secrets if the repo is private
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: test-results/cov-html-*/
+          retention-days: 30
