@@ -1,6 +1,5 @@
 import builtins
 import importlib
-import io
 from types import SimpleNamespace
 from typing import Any, Generator
 

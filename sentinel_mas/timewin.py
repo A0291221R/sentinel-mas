@@ -14,8 +14,19 @@ RE_DMY_DASH = re.compile(r"\b(?P<d>\d{1,2})-(?P<m>\d{1,2})-(?P<y>\d{4})\b")
 RE_ISO = re.compile(r"\b(?P<y>\d{4})-(?P<m>\d{2})-(?P<d>\d{2})\b")
 RE_DMY_SLASH = re.compile(r"\b(?P<d>\d{1,2})/(?P<m>\d{1,2})/(?P<y>\d{4})\b")
 RE_DMY_TEXT = re.compile(
-    r"\b(?P<d>\d{1,2})[-/\s](?P<mon>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[-/\s](?P<y>\d{4})\b",
-    re.IGNORECASE,
+    r"""
+    \b
+    (?P<d>\d{1,2})                # day
+    [-/\s]
+    (?P<mon>
+        Jan|Feb|Mar|Apr|May|Jun|
+        Jul|Aug|Sep|Sept|Oct|Nov|Dec
+    )[a-z]*                       # optional suffix like 'ember'
+    [-/\s]
+    (?P<y>\d{4})                  # 4-digit year
+    \b
+    """,
+    re.IGNORECASE | re.VERBOSE,
 )
 MON = {
     "jan": 1,
@@ -36,11 +47,20 @@ MON = {
 # --- FIXED time tokens ---
 # Enhanced to handle cases where AM/PM applies to both times in a range
 RE_RANGE_STRICT = re.compile(
-    r"(?:between\s+)?(?P<t1>now|\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?:to|and|-|–|—)\s*(?P<t2>now|\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?P<ampm_suffix>am|pm)?\b",
+    (
+        r"(?:between\s+)?"
+        r"(?P<t1>now|\d{1,2}(?::\d{2})?\s*(?:am|pm)?)"
+        r"\s*(?:to|and|-|–|—)\s*"
+        r"(?P<t2>now|\d{1,2}(?::\d{2})?\s*(?:am|pm)?)"
+        r"\s*(?P<ampm_suffix>am|pm)?\b"
+    ),
     re.IGNORECASE,
 )
+
 RE_RANGE_HH = re.compile(
-    r"(?:between\s+)?(?P<t1>\d{1,2})\s*(?:to|and|-|–|—)\s*(?P<t2>\d{1,2})\s*(?P<ampm_suffix>am|pm)?\b",
+    r"(?:between\s+)?"
+    r"(?P<t1>\d{1,2})\s*(?:to|and|-|–|—)\s*(?P<t2>\d{1,2})"
+    r"\s*(?P<ampm_suffix>am|pm)?\b",
     re.IGNORECASE,
 )
 RE_SINGLE_TIME_STRICT = re.compile(
@@ -203,11 +223,13 @@ def resolve_time_window(
             if m_rng_hh and m_rng_hh.group("ampm_suffix"):
                 ampm_suffix = m_rng_hh.group("ampm_suffix")
 
-        # If we have a suffix AM/PM and the first time doesn't have its own AM/PM, apply it to both
+        # If we have a suffix AM/PM and the first time doesn't have its own AM/PM,
+        # apply it to both
         t1_has_ampm = bool(re.search(r"(am|pm)\b", m_rng.group("t1"), re.IGNORECASE))
         t2_has_ampm = bool(re.search(r"(am|pm)\b", m_rng.group("t2"), re.IGNORECASE))
 
-        # FIX: If no explicit suffix but t2 has AM/PM and t1 doesn't, use t2's AM/PM for t1
+        # FIX: If no explicit suffix but t2 has AM/PM and t1 doesn't,
+        # use t2's AM/PM for t1
         if ampm_suffix is None and t2_has_ampm and not t1_has_ampm:
             # Extract AM/PM from t2
             t2_match = re.search(r"(am|pm)\b", m_rng.group("t2"), re.IGNORECASE)

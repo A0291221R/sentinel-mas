@@ -1,7 +1,6 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-
 from sentinel_mas.policy_sentinel.secure_executor import (
     call_tool_safely,
     guard_tool_call,

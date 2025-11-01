@@ -28,9 +28,6 @@ def _safe_preview(result: Any) -> Any:
     return {"type": type(result).__name__}
 
 
-from typing import Any, Dict
-
-
 def call_tool_safely(tool_obj: Any, tool_args: Dict[str, Any]) -> Any:
     """
     Execute a tool object safely regardless of whether it's a LangChain
@@ -77,7 +74,7 @@ def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str):
 
     # Prompt injection / jailbreak screen
     allowed, reason = guard.scan_single(
-        user_msg=state.get("user_question", ""), tool_name=tool_name, tool_args=args
+        user_msg=user_question, tool_name=tool_name, tool_args=args
     )
     if not allowed:
         guard_deny_and_raise(tool_name=tool_name, reason=reason, gate=gate)
@@ -89,8 +86,6 @@ def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str):
 
 
 def secure_execute_tool(tool_name: str, tool_fn, tool_args: dict):
-    ctx = get_context()
-
     # 1. Guard + pre-audit
     guard_tool_call(
         tool_name=tool_name,
@@ -103,7 +98,7 @@ def secure_execute_tool(tool_name: str, tool_fn, tool_args: dict):
         tool_name=tool_name, detail="RBAC, route, and injection checks passed"
     )
 
-    ## 3. Execute tool
+    # 3. Execute tool
     try:
         result = call_tool_safely(tool_fn, tool_args)
         audit_tool_success(

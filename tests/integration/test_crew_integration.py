@@ -1,10 +1,9 @@
 # tests/test_crew_integration_fixed.py
-import json
-from typing import Any, Generator
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 from langgraph.graph import END
 
 pytestmark = pytest.mark.integration
@@ -14,9 +13,10 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(autouse=True)
 def mock_all_dependencies() -> Generator[None, None, None]:
     """Mock all external dependencies before importing crew modules"""
-    with patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai, patch(
-        "sentinel_mas.agents.crew_agents.AGENT_REGISTRY"
-    ) as mock_registry:
+    with (
+        patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai,
+        patch("sentinel_mas.agents.crew_agents.AGENT_REGISTRY") as mock_registry,
+    ):
 
         # Mock LLM
         mock_llm_instance = MagicMock()
@@ -53,7 +53,8 @@ class TestCrewIntegration:
                 "EVENTS",
             ),
             (
-                '{"route": "TRACKING", "confidence": 0.7, "reason": "tracking request"}',
+                '{"route": "TRACKING", "confidence": 0.7, '
+                '"reason": "tracking request"}',
                 "TRACKING",
             ),
         ]

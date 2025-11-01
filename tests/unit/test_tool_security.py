@@ -3,16 +3,17 @@ from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 
 
 # Mock at the crew_agents level where ChatOpenAI is actually used
 @pytest.fixture(autouse=True)
 def mock_all_dependencies() -> Generator[None, None, None]:
     """Mock all external dependencies before importing crew modules"""
-    with patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai, patch(
-        "sentinel_mas.agents.crew_agents.AGENT_REGISTRY"
-    ) as mock_registry:
+    with (
+        patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai,
+        patch("sentinel_mas.agents.crew_agents.AGENT_REGISTRY") as mock_registry,
+    ):
 
         # Mock LLM
         mock_llm_instance = MagicMock()

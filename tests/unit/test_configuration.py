@@ -1,11 +1,8 @@
 import os
 import tempfile
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 import yaml
-
 from sentinel_mas.agents.loader import load_agent_configs
 
 

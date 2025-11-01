@@ -9,17 +9,28 @@ import pytest
 import yaml
 from langchain_core.messages import AIMessage
 
+# Import after adding to path
+from sentinel_mas.policy_sentinel.runtime import (
+    SentinelContext,
+    set_graph_state,
+)
+
 # Test database configuration
 TEST_DB_URL = "postgresql://postgres:postgres@localhost:5432/sentinel_test"
+
+# Add the project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 
 # Global patches to prevent OpenAI initialization
 @pytest.fixture(autouse=True)
 def global_mock():
     """Mock OpenAI and other external dependencies globally"""
-    with patch("langchain_openai.ChatOpenAI") as mock_chat_openai, patch(
-        "sentinel_mas.agents.crew_agents.AGENT_REGISTRY"
-    ) as mock_registry:
+    with (
+        patch("langchain_openai.ChatOpenAI") as mock_chat_openai,
+        patch("sentinel_mas.agents.crew_agents.AGENT_REGISTRY") as mock_registry,
+    ):
 
         # Mock LLM
         mock_llm_instance = MagicMock()
@@ -61,11 +72,11 @@ def mock_llm():
 @pytest.fixture(autouse=True)
 def mock_all_heavy_imports():
     """Mock ALL heavy imports that cause network calls"""
-    with patch("sentence_transformers.SentenceTransformer") as mock_st, patch(
-        "transformers.AutoConfig.from_pretrained"
-    ) as mock_config, patch(
-        "huggingface_hub.file_download.hf_hub_download"
-    ) as mock_hf_download:
+    with (
+        patch("sentence_transformers.SentenceTransformer") as mock_st,
+        patch("transformers.AutoConfig.from_pretrained") as mock_config,
+        patch("huggingface_hub.file_download.hf_hub_download") as mock_hf_download,
+    ):
 
         # Mock SentenceTransformer
         mock_model = MagicMock()
@@ -141,19 +152,7 @@ def mock_embedding():
         yield mock_embed
 
 
-# Add the project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-# Import after adding to path
-from sentinel_mas.policy_sentinel.runtime import (
-    SentinelContext,
-    get_graph_state,
-    set_graph_state,
-)
-
-
-## Test Report with JUnit
+# Test Report with JUnit
 def pytest_configure(config):
     """Configure pytest hooks for better JUnit reporting"""
     config.option.xmlpath = (
@@ -230,7 +229,6 @@ def sample_graph_state():
 @pytest.fixture
 def with_graph_state(sample_graph_state):
     """Fixture to set graph state for tests that need it"""
-    from sentinel_mas.policy_sentinel.runtime import set_graph_state
 
     set_graph_state(sample_graph_state)
     return sample_graph_state

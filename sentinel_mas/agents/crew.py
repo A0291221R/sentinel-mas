@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from langchain_core.messages import HumanMessage, ToolMessage
-from langgraph.graph import END, START, StateGraph
+import json
+
+from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from sentinel_mas.agents.crew_agents import CrewAgent, State
-from sentinel_mas.config import OPENAI_API_KEY, OPENAI_MODEL
 
 # from sentinel_mas.tools import get_tracks
-from sentinel_mas.policy_sentinel.runtime import set_graph_state
-
 # Policy Sentinel
-from sentinel_mas.policy_sentinel.secure_tool_node import SecureToolNode
 from sentinel_mas.timewin import resolve_time_window
 from sentinel_mas.tools.events_tools import list_anomaly_event, who_entered_zone
 from sentinel_mas.tools.sop_tools import get_sop, search_sop
@@ -163,11 +161,6 @@ def CreateCrew():
         graph.add_edge(agent_name, END)
 
     return graph.compile()
-
-
-import json
-
-from langchain_core.messages import AIMessage
 
 
 def router_condition(state) -> str:

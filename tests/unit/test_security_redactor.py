@@ -1,6 +1,3 @@
-from pathlib import Path
-
-import pytest
 
 from sentinel_mas.policy_sentinel.policy.security_redactor import SecurityRedactor
 

@@ -1,6 +1,5 @@
-import json
-from typing import Any, Generator
-from unittest.mock import MagicMock, Mock, patch
+from typing import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -10,9 +9,10 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 @pytest.fixture(autouse=True)
 def mock_all_dependencies() -> Generator[None, None, None]:
     """Mock all external dependencies before importing crew_agents"""
-    with patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai, patch(
-        "sentinel_mas.agents.crew_agents.AGENT_REGISTRY"
-    ) as mock_registry:
+    with (
+        patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai,
+        patch("sentinel_mas.agents.crew_agents.AGENT_REGISTRY") as mock_registry,
+    ):
 
         # Mock LLM
         mock_llm_instance = MagicMock()

@@ -1,12 +1,11 @@
 import json
-from typing import Any, Dict, Generator, List, Optional
-from unittest.mock import ANY, MagicMock, Mock, patch
+from typing import Any, Dict, List, Optional
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 
 # Import the runtime components
-from sentinel_mas.policy_sentinel.runtime import SentinelContext
 from sentinel_mas.policy_sentinel.secure_tool_node import SecureToolNode
 
 pytestmark = pytest.mark.integration

@@ -1,8 +1,5 @@
-from pathlib import Path
-from typing import Any
 
 import pytest
-
 from sentinel_mas.policy_sentinel.policy.rbac_loader import RBACPolicy
 
 

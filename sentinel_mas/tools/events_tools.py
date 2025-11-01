@@ -4,16 +4,11 @@ import os
 from typing import Any, Dict, List, Optional
 
 import psycopg
-
-# NOTE: depending on your install, either import from langchain_core.tools or langchain.tools
-# If one fails, switch to the other import line.
 from langchain_core.tools import tool
-from pydantic import BaseModel, Field
-
-# from langchain.tools import tool
 
 DSN = os.getenv(
-    "SENTINEL_DB_URL", "postgresql://postgres:postgres@localhost:5432/sentinel"
+    "SENTINEL_DB_URL",
+    "postgresql://postgres:postgres@localhost:5432/sentinel"
 )
 
 
@@ -31,7 +26,8 @@ def _clamp_limit(x: Optional[int], default: int = 50, max_cap: int = 1000) -> in
 
 
 # class WhoEnteredArgs(BaseModel):
-#     location_id: str = Field(..., description="Location (person_sessions.location_id)")
+#     location_id: str = Field(..., description="Location
+#       (person_sessions.location_id)")
 #     start_ms: int = Field(..., description="Start time in epoch ms")
 #     end_ms: int = Field(..., description="End time in epoch ms")
 #     camera_id: Optional[str] = Field(None, description="Optional camera filter")
@@ -97,8 +93,9 @@ def list_anomaly_event(
     limit: int = 100,
 ) -> Dict[str, Any]:
     """List anomaly/incident episodes from public.ad_events in a time window.
-    Optional filters: location_id, camera_id. Returns ts_ms=start_ms, location_id, cam_id,
-    incident, phase, confidence, episode, ad_event_id, end_ms, duration_ms.
+    Optional filters: location_id, camera_id. Returns ts_ms=start_ms,
+    location_id, cam_id, incident, phase, confidence, episode,
+    ad_event_id, end_ms, duration_ms.
     """
     limit = _clamp_limit(limit, default=100, max_cap=1000)
     sql = """

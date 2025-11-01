@@ -57,12 +57,13 @@ def generate_test_report():
 
             print(f"\n📊 Python {py_version}: {status}")
             print(
-                f"   Tests: {tests} | Failures: {failures} | Errors: {errors} | Skipped: {skipped} | Time: {time:.2f}s"
+                f"   Tests: {tests} | Failures: {failures} | Errors: {errors} | \
+                Skipped: {skipped} | Time: {time:.2f}s"
             )
 
             # Show failed tests
             if failures > 0 or errors > 0:
-                print(f"\n   🔴 Failed/Errored Tests:")
+                print("\n   🔴 Failed/Errored Tests:")
                 for testcase in root.findall(".//testcase"):
                     failure = testcase.find("failure")
                     error = testcase.find("error")

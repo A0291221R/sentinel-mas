@@ -1,7 +1,4 @@
 from typing import Any
-from unittest.mock import MagicMock, Mock
-
-import pytest
 
 from sentinel_mas.tools.events_tools import (
     _clamp_limit,

@@ -48,7 +48,8 @@ class GetSOPArgs(BaseModel):
 # --------- tools ----------
 @tool(args_schema=SearchSOPArgs)
 def search_sop(query: str, k: int = 6) -> List[Dict[str, Any]]:
-    """Search SOP KB by cosine similarity (unit-normalized embeddings + vector_cosine_ops)."""
+    """Search SOP KB by cosine similarity
+    (unit-normalized embeddings + vector_cosine_ops)."""
     qvec = embed_text_unit(query)
     sql = """
     SELECT id, section, title, text,

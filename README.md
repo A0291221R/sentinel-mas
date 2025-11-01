@@ -54,15 +54,17 @@ python scripts/generate_report.py
 ~~~
 
 
-## Quick Fix Options:
+## Local Sanity Check:
 ~~~bash
 # Run isort to automatically fix import sorting
-isort .
+uv run isort .
+uv run black .
+uv run flake8 .
+uv run mypy sentinel_mas tests
+uv run pytest
 
-# Then run black to ensure proper formatting
-black .
 
-# Verify the fixes
+## Verify the fixes:
 isort --check-only .
 black --check .
 

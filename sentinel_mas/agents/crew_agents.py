@@ -1,30 +1,19 @@
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
 # ---------- Graph State (new reducer style) ----------
-from typing import Annotated, Any, Dict, List, Literal, NotRequired, TypedDict
+from typing import Any, Dict
 
-import yaml
 from jinja2 import Template
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import (
     AIMessage,
-    AnyMessage,
-    HumanMessage,
     SystemMessage,
-    ToolMessage,
 )
 from langchain_openai import ChatOpenAI
-from langgraph.graph import MessagesState
-from pydantic import BaseModel, Field
-from typing_extensions import NotRequired
 
 from sentinel_mas.agents import AGENT_REGISTRY
 from sentinel_mas.state.graph_state import GraphState as State
-from sentinel_mas.state.utils import append_trace
 
 # class State(MessagesState):
 #     user_question: str
@@ -82,7 +71,8 @@ class CrewAgent:
 
         print(
             f"\n[AGENT {self.name}] IN messages={len(msgs)} "
-            f"start_ms={state.get('start_ms')} end_ms={state.get('end_ms')} time_label={state.get('time_label')}"
+            f"start_ms={state.get('start_ms')} end_ms={state.get('end_ms')} \
+            time_label={state.get('time_label')}"
         )
         # print(f"state: {state}\n")
         try:

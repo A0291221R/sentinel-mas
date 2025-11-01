@@ -1,8 +1,6 @@
 import json
 
-import pytest
 from langchain_core.messages import AIMessage
-
 from sentinel_mas.policy_sentinel.secure_tool_node import SecureToolNode
 
 

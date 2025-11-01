@@ -79,47 +79,105 @@ exclude = ["ui_app*", "images*", "scripts*", "notebooks*", "tests*", "docs*"]
 
 [tool.black]
 line-length = 88
-target-version = ['py312', 'py311', 'py310', 'py39', 'py38']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
 /(
   \.git
   | \.venv
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.ruff_cache
   | build
   | dist
+  | node_modules
+  | htmlcov
 )/
 '''
+[tool.ruff]
+line-length = 88
+src = ["sentinel_mas", "tests"]
+extend-exclude = [
+  ".venv", "venv", "**/.venv", ".mypy_cache", ".pytest_cache", ".ruff_cache",
+  "build", "dist", "htmlcov", "test-results", "all-test-results", "node_modules"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]        # W-class (pycodestyle warnings) are removed from core
+ignore = ["E203"]       # valid under Ruff <0.5.0 style; keep for compat
+
 
 [tool.isort]
 profile = "black"
-multi_line_output = 3
 line_length = 88
+known_first_party = ["sentinel_mas"]
+src_paths = ["sentinel_mas", "tests"]
 
 [tool.mypy]
 python_version = "3.12"
+files = ["sentinel_mas", "tests"]
+mypy_path = ["."]
+explicit_package_bases = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+warn_return_any = false
+ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["sentinel_mas"]
-omit = ["*/tests/*", "*/test_*"]
+omit = [
+  "tests/**",
+  "*/test_*",
+  "scripts/**",
+]
 
 [tool.coverage.report]
 exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if self.debug:",
-    "if settings.DEBUG",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if 0:",
-    "if __name__ == .__main__.:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
+  "pragma: no cover",
+  "def __repr__",
+  "if self\\.debug:",
+  "if settings\\.DEBUG",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == [\"']__main__[\"']:",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
 ]
 ignore_errors = true
 
 
 [tool.coverage.html]
 directory = "test-results/cov_html"
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = ["tests"]
+xfail_strict = true
+# junit_family = "xunit2" 
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+  ".git", ".venv", "venv", "**/.venv",
+  ".mypy_cache", ".pytest_cache", ".ruff_cache",
+  "build", "dist", "htmlcov",
+  "test-results", "all-test-results", "node_modules",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.9.0",
+    "ruff>=0.14.3",
+]

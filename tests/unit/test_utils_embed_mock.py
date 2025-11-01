@@ -1,4 +1,5 @@
 from typing import Any, Generator
+
 import numpy as np
 import pytest
 

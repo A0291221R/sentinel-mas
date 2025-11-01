@@ -1,5 +1,4 @@
 import pytest
-
 from sentinel_mas.policy_sentinel.runtime import (
     SentinelContext,
     context_scope,
@@ -45,7 +44,6 @@ class TestRuntime:
 
     def test_graph_state_scope(self) -> None:
         """Test graph state scope manager"""
-        initial_state = {"key": "initial"}
         scoped_state = {"key": "scoped"}
 
         with graph_state_scope(scoped_state):

@@ -8,7 +8,6 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from sentinel_mas.policy_sentinel.runtime import (
     context_scope,
-    get_graph_state,
     graph_state_scope,
 )
 from sentinel_mas.policy_sentinel.secure_executor import secure_execute_tool
@@ -38,7 +37,8 @@ class SecureToolNode:
         override_keys: Optional[
             List[str]
         ] = None,  # extra keys to freeze from state (e.g., ["location_id"])
-        route_from_state: bool = False,  # if True, use state["route"] or state["router_decision"]["route"]
+        # if True, use state["route"] or state["router_decision"]["route"]
+        route_from_state: bool = False,
     ):
         self.route = route
         self.agent_name = agent_name or f"{route.lower()}_agent"
@@ -94,17 +94,16 @@ class SecureToolNode:
         tool_calls = ai.tool_calls
         tool_messages: List[ToolMessage] = []
 
-        with context_scope(
-            user_id=state["user_id"],
-            user_role=state["user_role"],
-            request_id=state["request_id"],
-            session_id=state["session_id"],
-            route=self._get_route(state),
-        ), graph_state_scope(state):
-            # sanity debug to prove it's correct now:
-            dbg_state = get_graph_state()
-            # print(f"[SecureToolNode] get_graph_state() inside scope has route={dbg_state}")
-
+        with (
+            context_scope(
+                user_id=state["user_id"],
+                user_role=state["user_role"],
+                request_id=state["request_id"],
+                session_id=state["session_id"],
+                route=self._get_route(state),
+            ),
+            graph_state_scope(state),
+        ):
             is_halt = False
             for tc in tool_calls:
                 name = tc.get("name")

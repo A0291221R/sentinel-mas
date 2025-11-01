@@ -1,9 +1,7 @@
 import json
-from unittest.mock import patch
 
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
-
 from sentinel_mas.policy_sentinel.secure_tool_node import SecureToolNode
 
 pytestmark = pytest.mark.integration

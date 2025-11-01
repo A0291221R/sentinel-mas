@@ -4,7 +4,6 @@ from typing import Any, Generator
 
 import pytest
 import yaml
-
 from sentinel_mas.policy_sentinel.runtime import SentinelContext
 
 

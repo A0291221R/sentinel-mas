@@ -1,8 +1,7 @@
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import httpx
-import pytest
 
 
 # Import inside tests to ensure environment is mocked
@@ -21,7 +20,6 @@ class TestTrackingTools:
         # Ensure SENTINEL_API_KEY is NOT set for this test
         with patch.dict(os.environ, {}, clear=True):
             # Force re-import to pick up the cleared environment
-            import importlib
             import sys
 
             if "sentinel_mas.tools.tracking_tools" in sys.modules:

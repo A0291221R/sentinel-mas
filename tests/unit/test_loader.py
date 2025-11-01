@@ -1,5 +1,3 @@
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -115,7 +113,7 @@ class TestToolModules:
             pytest.skip(f"SOP tools not available: {e}")
 
     def test_tracking_tools_import(self) -> None:
-        """Test that tracking tools can be imported and have expected functions - FIXED"""
+        """Test that tracking tools can be imported and have expected functions"""
         try:
             from sentinel_mas.tools.tracking_tools import (
                 get_person_insight,

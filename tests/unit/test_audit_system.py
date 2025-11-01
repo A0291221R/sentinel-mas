@@ -1,14 +1,10 @@
-from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from sentinel_mas.policy_sentinel.audit import (
-    AuditEvent,
     audit_guard_allow,
     audit_tool_failure,
     audit_tool_success,
-    build_audit_event,
     guard_deny_and_raise,
 )
 
