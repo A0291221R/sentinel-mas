@@ -110,6 +110,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint-test
     if: always()
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     
     steps:
     - uses: actions/checkout@v4
