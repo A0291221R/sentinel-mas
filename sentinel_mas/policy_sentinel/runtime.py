@@ -4,7 +4,7 @@ from __future__ import annotations
 import contextvars
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Generator, Optional
 
 # ===============================================================
 # 1. SentinelContext — Immutable per-request identity envelope
@@ -40,7 +40,7 @@ def context_scope(
     request_id: str,
     session_id: Optional[str] = None,
     route: Optional[str] = None,
-):
+) -> Generator[Any, Any, Any]:
     """
     Context manager for setting a per-request SentinelContext.
 
@@ -95,7 +95,7 @@ def get_graph_state() -> Dict[str, Any]:
 
 
 @contextmanager
-def graph_state_scope(state: Dict[str, Any]):
+def graph_state_scope(state: Dict[str, Any]) -> Generator[Any, Any, Any]:
     """
     Attach this GraphState for the duration of the block,
     then restore whatever was there before.

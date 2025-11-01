@@ -58,7 +58,7 @@ def call_tool_safely(tool_obj: Any, tool_args: Dict[str, Any]) -> Any:
     raise TypeError(f"Unsupported tool type: {type(tool_obj).__name__}")
 
 
-def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str):
+def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str) -> None:
     """
     Enforce route/role policy and ALWAYS audit the decision.
     On DENY: writes a 'DENY' record, then raises PermissionError.
@@ -68,7 +68,7 @@ def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str):
     state = get_graph_state()
 
     # print(f"\n[guard_tool_call] state: {state}\n")
-    route = ctx.route
+    route = ctx.route if ctx.route else ""
     role = ctx.user_role
     user_question = state.get("user_question", "")
 
@@ -85,7 +85,7 @@ def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str):
         guard_deny_and_raise(tool_name=tool_name, reason=reason, gate=gate)
 
 
-def secure_execute_tool(tool_name: str, tool_fn, tool_args: dict):
+def secure_execute_tool(tool_name: str, tool_fn: Any, tool_args: dict) -> Any:
     # 1. Guard + pre-audit
     guard_tool_call(
         tool_name=tool_name,

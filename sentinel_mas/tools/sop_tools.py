@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, List, Optional
 
 import psycopg
@@ -9,18 +8,16 @@ import psycopg
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
+from sentinel_mas.config import Config
+
 from ..utils import embed_text_unit
 
-# from langchain.tools import tool  # <- use this line instead if your env needs it
-
-
-DSN = os.getenv(
-    "SENTINEL_DB_URL", "postgresql://postgres:postgres@localhost:5432/sentinel"
-)
+DSN = Config.SENTINEL_DB_URL
+print(f"sop_tools, DSN: {DSN}")
 
 
 # --------- helpers ----------
-def _row_to_hit(r) -> Dict[str, Any]:
+def _row_to_hit(r: Any) -> Dict[str, Any]:
     return {
         "id": r[0],
         "section": r[1],

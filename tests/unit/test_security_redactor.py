@@ -1,3 +1,6 @@
+import json
+from typing import Any, Dict
+
 from sentinel_mas.policy_sentinel.policy.security_redactor import SecurityRedactor
 
 
@@ -24,6 +27,7 @@ class TestSecurityRedactor:
 
         redacted = redactor.redact_args(args)
 
+        assert isinstance(redacted, dict)
         assert redacted["username"] == "john_doe"  # Not sensitive
         assert redacted["password"] == "<REDACTED>"
         assert redacted["api_token"] == "<REDACTED>"
@@ -46,6 +50,7 @@ class TestSecurityRedactor:
 
         redacted = redactor.redact_args(args)
 
+        assert isinstance(redacted, dict)
         assert redacted["user"]["name"] == "Alice"
         assert redacted["user"]["credentials"]["password"] == "<REDACTED>"
         assert redacted["metadata"]["secret_key"] == "<REDACTED>"
@@ -59,8 +64,14 @@ class TestSecurityRedactor:
 
         redacted = redactor.redact_args(deep_args)
 
+        red_map: Dict[str, Any]
+        if isinstance(redacted, str):
+            red_map = json.loads(redacted)
+        else:
+            red_map = redacted
+
         # Should be truncated at level 4 with max_depth 3
-        assert redacted["level1"]["level2"]["level3"]["level4"] == "<...>"
+        assert red_map["level1"]["level2"]["level3"]["level4"] == "<...>"
 
     def test_string_truncation(self, sample_redactor_policy_file) -> None:
         """Test long strings are truncated"""
@@ -71,5 +82,6 @@ class TestSecurityRedactor:
 
         redacted = redactor.redact_args(args)
 
+        assert isinstance(redacted, Dict)
         assert "...(truncated)" in redacted["long_data"]
         assert len(redacted["long_data"]) < len(long_string)

@@ -7,9 +7,10 @@ import json
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from typing import Any
 
 
-def generate_test_report():
+def generate_test_report() -> None:
     """Generate human-readable test report from JUnit XML files"""
     junit_files = glob.glob("test-results/junit-*.xml")
 
@@ -17,7 +18,7 @@ def generate_test_report():
         print("❌ No JUnit test results found!")
         return
 
-    total_stats = {
+    total_stats: dict[str, Any] = {
         "tests": 0,
         "failures": 0,
         "errors": 0,

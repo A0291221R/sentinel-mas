@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
@@ -241,8 +242,14 @@ def test_multiple_tool_calls_all_return_messages(monkeypatch) -> None:
     tool_msgs = [m for m in out["messages"] if isinstance(m, ToolMessage)]
     assert len(tool_msgs) == 2
 
-    payloads = [json.loads(m.content) for m in tool_msgs]
-
+    payloads: list[Any] = []
+    for m in tool_msgs:
+        content = m.content
+        if isinstance(content, str):
+            payloads.append(json.loads(content))
+        else:
+            # Already structured (list or dict) → use directly
+            payloads.append(content)
     assert payloads[-2]["data"] == {"ok": "a"}
     assert payloads[-1]["data"] == {"ok": "b"}
     # Note: current implementation sets halt based on the LAST tool result only

@@ -6,13 +6,11 @@ import json
 from typing import Any, Dict
 
 from jinja2 import Template
-from langchain_core.messages import (
-    AIMessage,
-    SystemMessage,
-)
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from sentinel_mas.agents import AGENT_REGISTRY
+from sentinel_mas.config import Config
 from sentinel_mas.state.graph_state import GraphState as State
 
 # class State(MessagesState):
@@ -37,6 +35,8 @@ from sentinel_mas.state.graph_state import GraphState as State
 #     session_id: NotRequired[str]     # stable across a CLI/app session
 #     request_id: NotRequired[str]     # new per user turn
 
+print(f"API key: {Config.OPENAI_API_KEY}")
+
 
 # ---------- Callable node ----------
 class CrewAgent:
@@ -52,14 +52,15 @@ class CrewAgent:
         self.name = agent_name
         self.runtime = AGENT_REGISTRY[agent_name]
         base = ChatOpenAI(
+            api_key=lambda: Config.OPENAI_API_KEY,
             model=self.runtime.llm_model,
             temperature=self.runtime.llm_temperature,
-            max_tokens=self.runtime.llm_max_tokens,
+            max_completion_tokens=self.runtime.llm_max_tokens,
         )
         self.tools = list(self.runtime.tools.values())
         self.llm = base.bind_tools(self.tools) if self.tools else base
 
-    def build_messages(self, state: State):
+    def build_messages(self, state: State) -> list[BaseMessage]:
         sys_text = Template(self.runtime.system_prompt).render(
             **{k: v for k, v in state.items() if k != "messages"}
         )

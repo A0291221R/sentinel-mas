@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any, Dict
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.graph import END, StateGraph
@@ -22,7 +23,7 @@ from sentinel_mas.tools.tracking_tools import (
 )
 
 # ~~~ Per-agent tool permissions ~~~
-router_tools = []
+# router_tools = []
 faq_tools = [get_sop, search_sop]
 event_tools = [list_anomaly_event, who_entered_zone]
 tracking_tools = [send_track, send_cancel, get_track_status, get_person_insight]
@@ -45,7 +46,7 @@ tracking_tool_node = SecureToolNode(
 # router_tool_node = ToolNode(router_tools)
 
 
-def parse_time_node(state):
+def parse_time_node(state: State) -> State:
     if state.get("start_ms") and state.get("end_ms"):
         return state  # already provided elsewhere
     q = state.get("user_question", "") or ""
@@ -58,7 +59,7 @@ def parse_time_node(state):
     except Exception as e:
         # leave unset; EVENTS agent will ask for one field if needed
         print("[PARSE] failed:", e)
-        return {}
+        return {**state}
 
 
 def post_tool_router(state: State) -> str:
@@ -69,7 +70,7 @@ def post_tool_router(state: State) -> str:
     return "CONTINUE"
 
 
-def finalize_error_node(state: State):
+def finalize_error_node(state: State) -> Dict[str, Any]:
     """
     Turn the last ToolMessage error into a final answer for the user.
     No more tool calls. No retry.
@@ -82,7 +83,13 @@ def finalize_error_node(state: State):
     user_friendly = "An internal error occurred."
     if tool_msg:
         try:
-            payload = json.loads(tool_msg.content)
+            raw = tool_msg.content
+            if isinstance(raw, str):
+                payload: Any = json.loads(raw)
+            else:
+                payload = raw  # already a list/dict; skip decoding
+
+            payload = json.loads(payload)
             if payload.get("status") == "DENIED":
                 user_friendly = (
                     "Access denied. You are not allowed to retrieve that information."
@@ -108,11 +115,11 @@ def finalize_error_node(state: State):
 def register_agent_and_tools(
     graph: StateGraph,
     agent_name: str,
-    agent_node,
-    tool_node,
-    end_node=END,
-    error_node="finalize_error_node",
-):
+    agent_node: CrewAgent,
+    tool_node: Any,
+    end_node: str = END,
+    error_node: str = "finalize_error_node",
+) -> StateGraph:
     tools_name = f"{agent_name}_tools"
 
     graph.add_node(agent_name, agent_node)
@@ -127,7 +134,7 @@ def register_agent_and_tools(
     return graph
 
 
-def CreateCrew():
+def CreateCrew() -> Any:
     graph = StateGraph(State)
 
     graph.add_node("finalize_error_node", finalize_error_node)
@@ -166,7 +173,7 @@ def CreateCrew():
     return graph.compile()
 
 
-def router_condition(state) -> str:
+def router_condition(state: State) -> str:
     """
     Reads the last AIMessage from router_agent, expects JSON:
       {"route":"SOP|DB|TRACKING","confidence":0.xx,"reason":"..."}
@@ -179,8 +186,12 @@ def router_condition(state) -> str:
         return END  # or raise
 
     try:
-        payload = json.loads(ai.content)
-        route = payload.get("route", "").upper().strip()
+        raw = ai.content
+        if isinstance(raw, str):
+            payload: Any = json.loads(raw)
+        else:
+            payload = raw  # already a list/dict; skip decoding
+        route: str = payload.get("route", "").upper().strip()
         if route in {"SOP", "EVENTS", "TRACKING"}:
             # optionally persist the router decision for audit
             state["route"] = route

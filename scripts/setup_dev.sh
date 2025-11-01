@@ -3,14 +3,15 @@
 echo "Setting up Python 3.12 development environment..."
 
 # Create virtual environment
-python3.12 -m venv .venv
+# python3.12 -m venv .venv
+uv venv .venv
 source .venv/bin/activate
 
 # Upgrade pip
-pip install --upgrade pip
+uv run pip install --upgrade pip
 
 # Install dependencies
-pip install -r requirements.txt
+uv run pip install -r requirements.txt
 
 # Create test directories
 mkdir -p test-results

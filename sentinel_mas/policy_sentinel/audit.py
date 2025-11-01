@@ -96,7 +96,7 @@ class AuditEvent:
 
     # tool call info
     tool: str
-    tool_args: Dict[str, Any]
+    tool_args: Dict[str, Any] | str
 
     # lifecycle
     phase: PhaseType  # "pre" | "exec" | "post"

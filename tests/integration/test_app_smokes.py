@@ -23,7 +23,9 @@ def patch_chat_openai(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, 
     monkeypatch.setattr(
         "sentinel_mas.agents.crew_agents.ChatOpenAI", DummyLLM, raising=False
     )
-    monkeypatch.setattr("sentinel_mas.agents.crew.ChatOpenAI", DummyLLM, raising=False)
+    monkeypatch.setattr(
+        "sentinel_mas.agents.crew_with_guard.ChatOpenAI", DummyLLM, raising=False
+    )
     monkeypatch.setattr("langchain_openai.ChatOpenAI", DummyLLM, raising=False)
 
     # Also neutralize any global model config used by the agents

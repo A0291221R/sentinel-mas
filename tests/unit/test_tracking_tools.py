@@ -15,16 +15,18 @@ class TestTrackingTools:
         assert headers["Authorization"] == "Bearer test-api-key"
         assert headers["Content-Type"] == "application/json"
 
-    def test_headers_without_api_key(self) -> None:
+    def test_headers_without_api_key(self, isolated_environment) -> None:
         """Test header generation without API key"""
-        # Ensure SENTINEL_API_KEY is NOT set for this test
-        with patch.dict(os.environ, {}, clear=True):
-            # Force re-import to pick up the cleared environment
-            import sys
+        # Set environment without API key
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test"}, clear=True):
+            # Re-import config first (it validates OPENAI_API_KEY)
+            import importlib
 
-            if "sentinel_mas.tools.tracking_tools" in sys.modules:
-                del sys.modules["sentinel_mas.tools.tracking_tools"]
+            import sentinel_mas.config
 
+            importlib.reload(sentinel_mas.config)
+
+            # Now import tracking_tools which will use the reloaded config
             from sentinel_mas.tools.tracking_tools import _headers
 
             headers = _headers()

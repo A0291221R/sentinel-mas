@@ -4,21 +4,30 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+load_dotenv()
 
 
-SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
-SENTINEL_DB_URL = os.getenv(
-    "SENTINEL_DB_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/sentinel"
-)
+class Config:
+    """Application configuration"""
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    CENTRAL_URL = os.getenv("CENTRAL_URL", "http://localhost:8000")
+    SENTINEL_DB_URL = os.getenv(
+        "SENTINEL_DB_URL",
+        "postgresql+psycopg://postgres:postgres@localhost:5432/sentinel",
+    )
+    SENTINEL_API_KEY = os.getenv("SENTINEL_API_KEY")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    @classmethod
+    def validate(cls) -> bool:
+        """Validate that required config is present"""
+        if not cls.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY must be set in environment")
+        return True
 
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-
+Config.validate()
 
 PUSHOVER_TOKEN = os.getenv("PUSHOVER_TOKEN")
 PUSHOVER_USER = os.getenv("PUSHOVER_USER")

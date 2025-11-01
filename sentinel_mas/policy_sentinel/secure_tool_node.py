@@ -106,7 +106,7 @@ class SecureToolNode:
         ):
             is_halt = False
             for tc in tool_calls:
-                name = tc.get("name")
+                name = tc.get("name", "")
                 args = tc.get("args") or {}
                 # args = self._state_overrides(dict(args or {}), state)
                 tcid = tc.get("id") or tc.get("tool_call_id") or "tool_call_0"

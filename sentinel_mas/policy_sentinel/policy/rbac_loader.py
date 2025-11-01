@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -46,7 +46,7 @@ class RBACPolicy:
 
     def get_allowed_tools(
         self, user_role: str, route: Optional[str] = None
-    ) -> List[str]:
+    ) -> List[str] | Any:
         """Return all tools allowed for this role (optionally filtered by route)."""
         role_cfg = self.roles.get(user_role)
         if not role_cfg:

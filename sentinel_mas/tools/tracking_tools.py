@@ -1,19 +1,25 @@
 from __future__ import annotations
 
-import os
 import time
 from typing import Any, Dict, Optional
 
 import httpx
 from langchain_core.tools import tool
 
-# from langchain.tools import tool
+from sentinel_mas.config import Config
 
-CENTRAL_URL = os.getenv("CENTRAL_URL", "http://sentinel-central:8000")
-SENTINEL_API_KEY = os.getenv("SENTINEL_API_KEY")
+CENTRAL_URL = Config.CENTRAL_URL
+SENTINEL_API_KEY = Config.SENTINEL_API_KEY
+
+# from langchain.tools import tool
 DEFAULT_TIMEOUT = 5.0
 MAX_RETRIES = 2
 RETRY_BACKOFF = 0.25
+
+
+print(
+    f"tracking_tools, CENTRAL_URL: {CENTRAL_URL}, SENTINEL_API_KEY:{SENTINEL_API_KEY}"
+)
 
 
 def _headers() -> Dict[str, str]:
@@ -61,6 +67,13 @@ def _request(
                 "error": f"{type(e).__name__}: {e}",
                 "endpoint": path,
             }
+    # Fallback for static analyzer — never actually reached
+    return {
+        "ok": False,
+        "status_code": 500,
+        "error": "Unexpected error: loop exited without return",
+        "endpoint": path,
+    }
 
 
 @tool

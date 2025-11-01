@@ -43,12 +43,12 @@ class GraphState(MessagesState):
     request_id: NotRequired[str]  # new per user turn
 
     # --- tool exec logs ---
-    tool_calls: List[ToolCallRecord]
+    tool_calls: NotRequired[List[ToolCallRecord]]
 
     # --- timeline ---
-    trace: List[TraceEvent]
+    trace: NotRequired[List[TraceEvent]]
 
     # --- Audit logs ---
-    audit_trail: List[Dict[str, Any]]
+    audit_trail: NotRequired[List[Dict[str, Any]]]
 
     halt: NotRequired[bool]

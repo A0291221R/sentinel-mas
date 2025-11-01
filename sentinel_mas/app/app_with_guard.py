@@ -2,7 +2,17 @@ import getpass
 import time
 import uuid
 
+# from sentinel_mas.agents.crew_agents import State
 from sentinel_mas.agents.crew_with_guard import CreateCrew
+
+# from sentinel_mas.memory.session_store import append_user
+# from sentinel_mas.policy_sentinel.runtime import context_scope
+
+# from ..config import OPENAI_API_KEY, OPENAI_MODEL
+
+# from langsmith import Client, tracing_context
+# from sentinel_mas.runtime.app_runtime import start_runtime
+
 
 app = CreateCrew()
 
@@ -13,6 +23,10 @@ app = CreateCrew()
 
 if __name__ == "__main__":
 
+    # 1) Boot runtime (loads @tool modules, validates policy allowlist)
+    # start_runtime(with_metrics=False)   # keep False; you’ll add Prom later
+
+    # 2) Basic session context (persist for the whole CLI session)
     session_id = f"cli-{uuid.uuid4().hex[:10]}"
     user_id = getpass.getuser() or "cli_user"
     user_role = "supervisor"  # change to "supervisor"/"admin" when needed

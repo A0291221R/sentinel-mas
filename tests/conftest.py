@@ -23,6 +23,80 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 
+# CRITICAL: Mock environment BEFORE any imports that use it
+@pytest.fixture(scope="session", autouse=True)
+def session_environment():
+    """Set up test environment variables at session start - before ANY imports"""
+    with patch.dict(
+        os.environ,
+        {
+            "SENTINEL_DB_URL": TEST_DB_URL,
+            "CENTRAL_URL": "http://test-central:8000",
+            "SENTINEL_API_KEY": "test-api-key",
+            "OPENAI_API_KEY": "test-openai-key",
+        },
+        clear=False,  # Don't clear, just override
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def mock_environment():
+    """Mock environment variables for testing - force module reload"""
+    # List of all modules that need to be reloaded
+    modules_to_reload = [
+        "sentinel_mas.tools.tracking_tools",
+        "sentinel_mas.config",
+    ]
+
+    # Remove modules to force re-import with test environment
+    for module_name in modules_to_reload:
+        if module_name in sys.modules:
+            del sys.modules[module_name]
+
+    with patch.dict(
+        os.environ,
+        {
+            "SENTINEL_DB_URL": TEST_DB_URL,
+            "CENTRAL_URL": "http://test-central:8000",
+            "SENTINEL_API_KEY": "test-api-key",
+            "OPENAI_API_KEY": "test-openai-key",
+        },
+        clear=False,
+    ):
+        # Force re-import of config module with test environment
+        import importlib
+
+        import sentinel_mas.config
+
+        importlib.reload(sentinel_mas.config)
+        yield
+
+
+@pytest.fixture
+def isolated_environment():
+    """Provides an isolated environment for tests that need to modify
+    environment variables
+    """
+    modules_to_clear = [
+        "sentinel_mas.tools.tracking_tools",
+        "sentinel_mas.config",
+    ]
+
+    # Store original modules
+    original_modules = {}
+    for module_name in modules_to_clear:
+        if module_name in sys.modules:
+            original_modules[module_name] = sys.modules[module_name]
+            del sys.modules[module_name]
+
+    yield
+
+    # Restore original modules
+    for module_name, module in original_modules.items():
+        sys.modules[module_name] = module
+
+
 # Global patches to prevent OpenAI initialization
 @pytest.fixture(autouse=True)
 def global_mock():
@@ -88,26 +162,6 @@ def mock_all_heavy_imports():
 
         # Mock huggingface downloads
         mock_hf_download.return_value = "/mock/path/model.bin"
-
-        yield
-
-
-@pytest.fixture(autouse=True)
-def mock_environment():
-    """Mock environment variables for testing - applied before imports"""
-    # Clear any existing tracking_tools module to force re-import
-    if "sentinel_mas.tools.tracking_tools" in sys.modules:
-        del sys.modules["sentinel_mas.tools.tracking_tools"]
-
-    with patch.dict(
-        os.environ,
-        {
-            "SENTINEL_DB_URL": TEST_DB_URL,
-            "CENTRAL_URL": "http://test-central:8000",
-            "SENTINEL_API_KEY": "test-api-key",
-        },
-        clear=True,
-    ):
         yield
 
 

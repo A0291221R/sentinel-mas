@@ -1,9 +1,17 @@
 import json
-from typing import Generator
+from typing import TYPE_CHECKING, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.messages import HumanMessage, ToolMessage
+
+# Import types for type checking, but they won't be imported at runtime
+if TYPE_CHECKING:
+    from sentinel_mas.agents.crew import (
+        finalize_error_node,
+        post_tool_router,
+    )
+    from sentinel_mas.state.graph_state import GraphState
 
 
 # Mock at the crew_agents level where ChatOpenAI is actually used
@@ -29,8 +37,20 @@ def mock_all_dependencies() -> Generator[None, None, None]:
         mock_registry.__getitem__.return_value = mock_runtime
 
         # Now import your actual functions
-        global post_tool_router, finalize_error_node
-        from sentinel_mas.agents.crew import finalize_error_node, post_tool_router
+        from sentinel_mas.agents.crew import (
+            finalize_error_node,
+            parse_time_node,
+            post_tool_router,
+            router_condition,
+        )
+        from sentinel_mas.state.graph_state import GraphState
+
+        # Make them available globally for the tests
+        globals()["router_condition"] = router_condition
+        globals()["parse_time_node"] = parse_time_node
+        globals()["GraphState"] = GraphState
+        globals()["post_tool_router"] = post_tool_router
+        globals()["finalize_error_node"] = finalize_error_node
 
         yield
 
@@ -40,7 +60,7 @@ class TestToolSecurity:
 
     def test_post_tool_router_continue(self) -> None:
         """Test YOUR post_tool_router function for continue case"""
-        state = {"halt": False}
+        state: GraphState = {"messages": [], "user_question": "", "halt": False}
 
         # Call YOUR actual function
         result = post_tool_router(state)
@@ -48,7 +68,7 @@ class TestToolSecurity:
 
     def test_post_tool_router_halt(self) -> None:
         """Test YOUR post_tool_router function for halt case"""
-        state = {"halt": True}
+        state: GraphState = {"messages": [], "user_question": "", "halt": True}
 
         # Call YOUR actual function
         result = post_tool_router(state)
@@ -61,7 +81,7 @@ class TestToolSecurity:
             tool_call_id="test_123",
         )
 
-        state = {
+        state: GraphState = {
             "messages": [HumanMessage(content="test"), denied_message],
             "user_question": "test question",
         }
@@ -81,7 +101,7 @@ class TestToolSecurity:
             tool_call_id="test_123",
         )
 
-        state = {
+        state: GraphState = {
             "messages": [HumanMessage(content="test"), error_message],
             "user_question": "test question",
         }
@@ -91,11 +111,12 @@ class TestToolSecurity:
 
         assert "messages" in result
         final_msg = result["messages"][-1]
+        assert isinstance(final_msg.content, str)
         assert "internal error" in final_msg.content.lower()
 
     def test_finalize_error_node_generic(self) -> None:
         """Test YOUR finalize_error_node function for generic case"""
-        state = {
+        state: GraphState = {
             "messages": [HumanMessage(content="test")],
             "user_question": "test question",
         }

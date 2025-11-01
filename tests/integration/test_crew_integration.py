@@ -1,5 +1,5 @@
 # tests/test_crew_integration_fixed.py
-from typing import Generator
+from typing import TYPE_CHECKING, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,6 +7,13 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END
 
 pytestmark = pytest.mark.integration
+
+if TYPE_CHECKING:
+    from sentinel_mas.agents.crew import (
+        parse_time_node,
+        router_condition,
+    )
+    from sentinel_mas.state.graph_state import GraphState
 
 
 # Mock at the crew_agents level where ChatOpenAI is actually used
@@ -32,8 +39,20 @@ def mock_all_dependencies() -> Generator[None, None, None]:
         mock_registry.__getitem__.return_value = mock_runtime
 
         # Now import your actual functions
-        global router_condition, parse_time_node
-        from sentinel_mas.agents.crew import parse_time_node, router_condition
+        from sentinel_mas.agents.crew import (
+            finalize_error_node,
+            parse_time_node,
+            post_tool_router,
+            router_condition,
+        )
+        from sentinel_mas.state.graph_state import GraphState
+
+        # Make them available globally for the tests
+        globals()["router_condition"] = router_condition
+        globals()["parse_time_node"] = parse_time_node
+        globals()["GraphState"] = GraphState
+        globals()["post_tool_router"] = post_tool_router
+        globals()["finalize_error_node"] = finalize_error_node
 
         yield
 
@@ -60,7 +79,7 @@ class TestCrewIntegration:
         ]
 
         for ai_content, expected_route in test_cases:
-            state = {
+            state: GraphState = {
                 "messages": [AIMessage(content=ai_content)],
                 "user_question": "test question",
             }
@@ -80,7 +99,7 @@ class TestCrewIntegration:
         ]
 
         for ai_content in invalid_cases:
-            state = {
+            state: GraphState = {
                 "messages": [AIMessage(content=ai_content)],
                 "user_question": "test question",
             }
@@ -99,7 +118,10 @@ class TestCrewIntegration:
             "last 30 minutes",
         )
 
-        state = {"user_question": "Show events from yesterday 2pm to 4pm"}
+        state: GraphState = {
+            "messages": [],
+            "user_question": "Show events from yesterday 2pm to 4pm",
+        }
 
         # Call YOUR actual function
         result = parse_time_node(state)
@@ -112,7 +134,8 @@ class TestCrewIntegration:
 
     def test_parse_time_node_already_parsed(self) -> None:
         """Test YOUR parse_time_node when times already exist"""
-        state = {
+        state: GraphState = {
+            "messages": [],
             "user_question": "test question",
             "start_ms": 1704067200000,
             "end_ms": 1704070800000,
@@ -127,8 +150,8 @@ class TestCrewIntegration:
         """Test YOUR parse_time_node function when parsing fails"""
         mock_resolve_time.side_effect = Exception("Parse failed")
 
-        state = {"user_question": "this won't parse"}
+        state: GraphState = {"messages": [], "user_question": "this won't parse"}
 
         # Call YOUR actual function
         result = parse_time_node(state)
-        assert result == {}
+        assert result == state

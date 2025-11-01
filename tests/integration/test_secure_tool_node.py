@@ -80,7 +80,7 @@ class TestSecureToolNode:
         assert node._get_route(state_with_decision) == "SOP"
 
         # Test fallback to default
-        state_empty = {}
+        state_empty: dict[str, Any] = {}
         assert node._get_route(state_empty) == "DEFAULT"
 
     def test_last_ai_message_extraction(
@@ -117,11 +117,11 @@ class TestSecureToolNode:
         sample_state["messages"] = [ai_message]
         assert secure_tool_node._last_ai(sample_state["messages"]) == ai_message
 
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.context_scope")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.graph_state_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.context_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.graph_state_scope")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.get_graph_state")
+    @patch("sentinel_mas.policy_sentinel.runtime.get_graph_state")
     def test_successful_tool_execution(
         self,
         mock_get_graph_state: MagicMock,
@@ -173,6 +173,7 @@ class TestSecureToolNode:
 
         # Verify tool message content
         tool_message = result["messages"][-1]
+        assert isinstance(tool_message.content, str)
         content = json.loads(tool_message.content)
         assert content["ok"] is True
         assert content["status"] == "OK"
@@ -188,11 +189,11 @@ class TestSecureToolNode:
         # Verify TOOL_REGISTRY was queried
         mock_tool_registry.get.assert_called_once_with("test_tool_1")
 
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.context_scope")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.graph_state_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.context_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.graph_state_scope")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.get_graph_state")
+    @patch("sentinel_mas.policy_sentinel.runtime.get_graph_state")
     def test_permission_denied_tool_execution(
         self,
         mock_get_graph_state: MagicMock,
@@ -251,11 +252,11 @@ class TestSecureToolNode:
             tool_args={"param": "value"},
         )
 
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.context_scope")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.graph_state_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.context_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.graph_state_scope")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.get_graph_state")
+    @patch("sentinel_mas.policy_sentinel.runtime.get_graph_state")
     def test_tool_execution_failure(
         self,
         mock_get_graph_state: MagicMock,
@@ -314,10 +315,10 @@ class TestSecureToolNode:
             tool_args={"param": "invalid"},
         )
 
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.context_scope")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.graph_state_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.context_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.graph_state_scope")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.get_graph_state")
+    @patch("sentinel_mas.policy_sentinel.runtime.get_graph_state")
     def test_unknown_tool(
         self,
         mock_get_graph_state: MagicMock,
@@ -366,11 +367,11 @@ class TestSecureToolNode:
         # Verify TOOL_REGISTRY was queried
         mock_tool_registry.get.assert_called_once_with("unknown_tool")
 
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.context_scope")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.graph_state_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.context_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.graph_state_scope")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.get_graph_state")
+    @patch("sentinel_mas.policy_sentinel.runtime.get_graph_state")
     def test_multiple_tool_executions(
         self,
         mock_get_graph_state: MagicMock,
@@ -449,11 +450,11 @@ class TestSecureToolNode:
         mock_tool_registry.get.assert_any_call("test_tool_1")
         mock_tool_registry.get.assert_any_call("test_tool_2")
 
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.context_scope")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.graph_state_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.context_scope")
+    @patch("sentinel_mas.policy_sentinel.runtime.graph_state_scope")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool")
     @patch("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY")
-    @patch("sentinel_mas.policy_sentinel.secure_tool_node.get_graph_state")
+    @patch("sentinel_mas.policy_sentinel.runtime.get_graph_state")
     def test_mixed_success_and_failure(
         self,
         mock_get_graph_state: MagicMock,

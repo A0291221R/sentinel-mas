@@ -96,7 +96,7 @@ def _now_sgt() -> datetime:
 
 
 def _parse_hhmm(
-    tok: str, now: datetime, ampm_override: str = None
+    tok: str, now: datetime, ampm_override: str | None = None
 ) -> tuple[int, int, bool]:
     """Return (hour_24, minute, is_now_token)."""
     t = tok.strip().lower()

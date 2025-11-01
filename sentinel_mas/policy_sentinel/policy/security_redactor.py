@@ -13,7 +13,7 @@ class SecurityRedactor:
         self._lock = threading.RLock()
         self.reload_policy()
 
-    def reload_policy(self):
+    def reload_policy(self) -> None:
         if not self._path.exists():
             raise FileNotFoundError(f"Missing security policy file: {self._path}")
         with open(self._path, "r", encoding="utf-8") as f:
@@ -31,7 +31,7 @@ class SecurityRedactor:
         if _level > self._depth:
             return "<...>"
 
-        redacted = {}
+        redacted: dict[str, Any] = {}
         for k, v in args.items():
             k_lower = k.lower()
             if k_lower in self._keys or any(sub in k_lower for sub in self._keys):

@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, List, Optional
 
 import psycopg
 from langchain_core.tools import tool
 
-DSN = os.getenv(
-    "SENTINEL_DB_URL", "postgresql://postgres:postgres@localhost:5432/sentinel"
-)
+from sentinel_mas.config import Config
+
+DSN = Config.SENTINEL_DB_URL
+print(f"event_tools, DSN: {DSN}")
 
 
-def _rows(cursor) -> List[dict]:
+def _rows(cursor: Any) -> List[dict]:
     cols = [d[0] for d in cursor.description]
     return [dict(zip(cols, r)) for r in cursor.fetchall()]
 
 
-def _clamp_limit(x: Optional[int], default: int = 50, max_cap: int = 1000) -> int:
+def _clamp_limit(x: Optional[int | str], default: int = 50, max_cap: int = 1000) -> int:
     try:
         v = int(x or default)
     except Exception:

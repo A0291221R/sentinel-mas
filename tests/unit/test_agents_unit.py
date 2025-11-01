@@ -1,8 +1,10 @@
-from typing import Generator
+from typing import Any, Generator, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+from sentinel_mas.agents.crew_agents import CrewAgent, State
 
 
 # Mock at the crew_agents level where ChatOpenAI is actually used
@@ -71,7 +73,7 @@ class TestCrewAgents:
         mock_response = AIMessage(
             content='{"route": "SOP", "confidence": 0.9, "reason": "SOP question"}'
         )
-        agent.llm.invoke.return_value = mock_response
+        cast(Any, agent.llm).invoke = MagicMock(return_value=mock_response)
 
         test_state = State(
             messages=[HumanMessage(content="What's the procedure for X?")],

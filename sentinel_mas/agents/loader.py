@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import glob
 import os
-from typing import Dict
+from typing import Any, Dict
 
 import yaml
 
@@ -29,7 +29,7 @@ def load_agent_configs(config_dir: str) -> Dict[str, AgentRuntime]:
         system_prompt = raw["system_prompt"]
 
         tool_names = raw.get("tools", [])
-        tool_map = {}
+        tool_map: Any = {}
         for tname in tool_names:
             if tname not in TOOL_REGISTRY:
                 raise RuntimeError(f"[{name}] tool '{tname}' not found")
