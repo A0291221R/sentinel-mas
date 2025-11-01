@@ -31,10 +31,17 @@ jobs:
 
       # Use uv and cache it for speed
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
-          enable-cache: true   # enable tool + wheel cache
-
+          enable-cache: true
+          # Optional: make the cache key follow your real deps if you don't use uv.lock
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+            **/*constraints*.txt
+          # Optional: don't fail when nothing to cache (first run / monorepo subdir)
+          ignore-nothing-to-cache: true
+        
       # Optional: cache the virtualenv itself (keyed by lockfile)
       - name: Cache virtualenv
         uses: actions/cache@v4
@@ -87,7 +94,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
-    needs: lint-test   # run after basic health
+    if: ${{ always() }}     # make it explicit
     strategy:
       matrix:
         python-version: ["3.12"]
@@ -101,9 +108,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+          # Optional: make the cache key follow your real deps if you don't use uv.lock
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+            **/*constraints*.txt
+          # Optional: don't fail when nothing to cache (first run / monorepo subdir)
+          ignore-nothing-to-cache: true
 
       - name: Install security tools
         run: |
@@ -134,7 +148,7 @@ jobs:
 
   report:
     runs-on: ubuntu-latest
-    needs: [lint-test]   # add "security" here if you want to wait on it too
+    needs: [lint-test, security]
     if: always()
     permissions:
       contents: read
