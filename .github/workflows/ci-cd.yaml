@@ -97,7 +97,7 @@ jobs:
         
     - name: Generate test report
       run: |
-        mkdir -p test-results
+        mkdir -p all-test-results
         # Combine all test results
         find all-test-results -name "*.xml" -exec cp {} test-results/ \;
         python scripts/generate_report.py
