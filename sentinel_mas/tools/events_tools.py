@@ -7,8 +7,7 @@ import psycopg
 from langchain_core.tools import tool
 
 DSN = os.getenv(
-    "SENTINEL_DB_URL",
-    "postgresql://postgres:postgres@localhost:5432/sentinel"
+    "SENTINEL_DB_URL", "postgresql://postgres:postgres@localhost:5432/sentinel"
 )
 
 

@@ -1,4 +1,3 @@
-
 from sentinel_mas.policy_sentinel.policy.injection_guard import InjectionGuard
 
 

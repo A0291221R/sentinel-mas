@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import pytest
+
 from sentinel_mas.timewin import SGT, resolve_time_window
 
 

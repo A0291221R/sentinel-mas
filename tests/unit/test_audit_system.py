@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
 from sentinel_mas.policy_sentinel.audit import (
     audit_guard_allow,
     audit_tool_failure,

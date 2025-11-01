@@ -117,6 +117,10 @@ src_paths = ["sentinel_mas", "tests"]
 python_version = "3.12"
 files = ["sentinel_mas", "tests"]
 mypy_path = ["."]
+exclude = '''
+(^\.venv/|^venv/|^all-test-results/|^test-results/|^build/|^dist/|\
+^node_modules/|^htmlcov/)
+'''
 explicit_package_bases = true
 warn_return_any = true
 warn_unused_configs = true

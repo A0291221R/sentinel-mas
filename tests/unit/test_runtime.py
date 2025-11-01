@@ -1,4 +1,5 @@
 import pytest
+
 from sentinel_mas.policy_sentinel.runtime import (
     SentinelContext,
     context_scope,

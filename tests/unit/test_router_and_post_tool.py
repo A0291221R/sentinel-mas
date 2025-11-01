@@ -2,6 +2,7 @@ import json
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.graph import END
+
 from sentinel_mas.agents.crew_with_guard import (
     finalize_error_node,
     post_tool_router,

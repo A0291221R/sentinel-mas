@@ -3,6 +3,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import yaml
+
 from sentinel_mas.agents.loader import load_agent_configs
 
 

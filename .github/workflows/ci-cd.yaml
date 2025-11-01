@@ -23,7 +23,7 @@ jobs:
 
     - uses: astral-sh/setup-uv@v4
       with:
-        enable-cache: true  # pip cache + uv cache
+        enable-cache: false  # pip cache + uv cache
 
     - name: Install deps
       run: uv sync --all-extras --dev
@@ -75,7 +75,7 @@ jobs:
         
     - uses: astral-sh/setup-uv@v4
       with:
-        enable-cache: true  # pip cache + uv cache
+        enable-cache: false
 
     - name: Install security tools
       run: |
