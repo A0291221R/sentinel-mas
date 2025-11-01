@@ -37,30 +37,4 @@ SQLAlchemy
 # fastmcp
 # langchain-mcp-adapters
 
-# uv pip install pytest pytest-asyncio pytest-cov pytest-mock freezegun httpx pyyaml
-
-# Core testing
-pytest>=7.4.0
-pytest-cov>=4.1.0
-pytest-xdist>=3.3.0
-pytest-mock>=3.10.0
-PyYAML>=6.0
-
-# Linting & formatting
-black>=23.0.0
-isort>=5.12.0
-flake8>=6.0.0
-
-# Type checking
-mypy>=1.5.0
-types-pytz
-types-PyYAML
-
-# Security
-safety>=2.3.5
-bandit>=1.7.7
-
-coverage>=7.2.0
-# setuptools>=68.0.0
-
 

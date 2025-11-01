@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 # Mock at the crew_agents level where ChatOpenAI is actually used
 @pytest.fixture(autouse=True)
-def mock_all_dependencies() -> Generator [None, None, None]:
+def mock_all_dependencies() -> Generator[None, None, None]:
     """Mock all external dependencies before importing crew modules"""
     with patch("sentinel_mas.agents.crew_agents.ChatOpenAI") as mock_chat_openai, patch(
         "sentinel_mas.agents.crew_agents.AGENT_REGISTRY"
