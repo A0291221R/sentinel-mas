@@ -20,41 +20,38 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        cache-dependency-path: |
-            requirements.txt
-            requirements-test.txt
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-test.txt || true
-        pip install black isort flake8 mypy pytest pytest-cov || true
-        # install your package so imports work
-        pip install -e .
+
+    - uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true  # pip cache + uv cache
+
+    - name: Install deps
+      run: uv sync --all-extras --dev
+
+    # If requirements files instead:
+    # - run: |
+    #     uv pip install -r requirements.txt
+    #     [ -f requirements-dev.txt ] && uv pip install -r requirements-dev.txt
+    #     uv pip install -e .
         
     - name: Run linters
       run: |
         echo "=== Running Black ==="
-        black --check .
+        uv run black --check .
         
         echo "=== Running isort ==="
-        isort --check-only .
+        uv run isort --check-only .
         
         echo "=== Running flake8 ==="
-        flake8 . --count --show-source --statistics
+        uv run flake8 sentinel_mas tests --count --show-source --statistics
         
         echo "=== Running mypy ==="
-        mypy .
+        uv run mypy sentinel_mas tests
         
     - name: Run tests with pytest
       run: |
         mkdir -p test-results
-        pytest tests/ --junitxml=test-results/junit-${{ matrix.python-version }}.xml \
-                     --cov-report=xml:test-results/coverage-${{ matrix.python-version }}.xml \
-                     --cov=sentinel_mas \
-                     --cov-report=html:test-results/cov-html-${{ matrix.python-version }}
+        uv run pytest
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -71,18 +68,19 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+
+    - uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        cache-dependency-path: requirements.txt
+        python-version: "3.12"
         
+    - uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true  # pip cache + uv cache
+
     - name: Install security tools
       run: |
-        python -m pip install --upgrade pip
-        pip install safety bandit
+        run: uv sync --all-extras --dev
+        uv run pip install safety bandit
         
     - name: Scan dependencies for security vulnerabilities
       run: |
