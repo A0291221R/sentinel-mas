@@ -1,20 +1,29 @@
-import importlib
-from types import SimpleNamespace
 import builtins
+import importlib
 import io
+from types import SimpleNamespace
+from typing import Any, Generator
+
 import pytest
 
 pytestmark = pytest.mark.integration
 
+
 @pytest.fixture(autouse=True)
-def patch_chat_openai(monkeypatch):
+def patch_chat_openai(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     """Prevent LangChain from instantiating real OpenAI clients during import."""
+
     class DummyLLM:
-        def __init__(self, *a, **kw): pass
-        def invoke(self, *a, **kw): return SimpleNamespace(content="ok")
+        def __init__(self, *a: Any, **kw: Any) -> None:
+            pass
+
+        def invoke(self, *a: Any, **kw: Any) -> SimpleNamespace:
+            return SimpleNamespace(content="ok")
 
     # Patch both common import paths
-    monkeypatch.setattr("sentinel_mas.agents.crew_agents.ChatOpenAI", DummyLLM, raising=False)
+    monkeypatch.setattr(
+        "sentinel_mas.agents.crew_agents.ChatOpenAI", DummyLLM, raising=False
+    )
     monkeypatch.setattr("sentinel_mas.agents.crew.ChatOpenAI", DummyLLM, raising=False)
     monkeypatch.setattr("langchain_openai.ChatOpenAI", DummyLLM, raising=False)
 
@@ -22,7 +31,10 @@ def patch_chat_openai(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
     yield
 
-def test_app_with_guard_import_smoke(monkeypatch, tmp_path):
+
+def test_app_with_guard_import_smoke(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
     # Fake CreateCrew().get_graph().draw_mermaid_png()
     fake_graph = SimpleNamespace(draw_mermaid_png=lambda: b"PNG")
     fake_app = SimpleNamespace(get_graph=lambda: fake_graph)
@@ -38,7 +50,8 @@ def test_app_with_guard_import_smoke(monkeypatch, tmp_path):
     out_file = tmp_path / "sentinel_flow.png"
 
     _open = builtins.open
-    def fake_open(path, mode="r", *a, **kw):
+
+    def fake_open(path: str, mode: str = "r", *a: Any, **kw: Any) -> Any:
         # Allow text reads; redirect binary write to tmp path
         if "wb" in mode:
             path = out_file
@@ -53,13 +66,16 @@ def test_app_with_guard_import_smoke(monkeypatch, tmp_path):
     if out_file.exists():
         assert out_file.read_bytes() == b"PNG"
 
-def test_app_import_smoke(monkeypatch):
+
+def test_app_import_smoke(monkeypatch: pytest.MonkeyPatch) -> None:
     # Some repos still import a legacy crew.CreateCrew in app.py; give it a stub
-    fake_app = SimpleNamespace(get_graph=lambda: SimpleNamespace(draw_mermaid_png=lambda: b""))
+    fake_app = SimpleNamespace(
+        get_graph=lambda: SimpleNamespace(draw_mermaid_png=lambda: b"")
+    )
     monkeypatch.setattr(
         "sentinel_mas.agents.crew.CreateCrew",
         lambda: fake_app,
-        raising=False,   # tolerate if module isn't used
+        raising=False,  # tolerate if module isn't used
     )
     m = importlib.import_module("sentinel_mas.app.app")
     assert hasattr(m, "app")

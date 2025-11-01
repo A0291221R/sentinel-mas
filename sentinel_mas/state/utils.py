@@ -1,9 +1,12 @@
 import time
-from typing import Dict, Any
-from .graph_state import GraphState, TraceEvent, ToolCallRecord
+from typing import Any, Dict
+
+from .graph_state import GraphState, ToolCallRecord, TraceEvent
+
 
 def now_ms() -> float:
     return time.time() * 1000.0
+
 
 def _audit_context_from_state(state: GraphState) -> Dict[str, Any]:
     """
@@ -16,6 +19,7 @@ def _audit_context_from_state(state: GraphState) -> Dict[str, Any]:
         "user_role": state.get("user_role"),
         "user_question": state.get("user_input"),
     }
+
 
 def append_trace(
     state: GraphState,
@@ -49,6 +53,7 @@ def append_trace(
     }
     state.setdefault("trace", [])
     state["trace"].append(evt)
+
 
 def record_tool_call(
     state: GraphState,

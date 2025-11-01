@@ -1,18 +1,26 @@
 from __future__ import annotations
-from typing import Optional, Dict, Any, List
-import psycopg, os
+
+import os
+from typing import Any, Dict, List, Optional
+
+import psycopg
 
 # NOTE: depending on your install, either import from langchain_core.tools or langchain.tools
 # If one fails, switch to the other import line.
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
+
 # from langchain.tools import tool
 
-DSN = os.getenv('SENTINEL_DB_URL', 'postgresql://postgres:postgres@localhost:5432/sentinel')
+DSN = os.getenv(
+    "SENTINEL_DB_URL", "postgresql://postgres:postgres@localhost:5432/sentinel"
+)
+
 
 def _rows(cursor) -> List[dict]:
     cols = [d[0] for d in cursor.description]
     return [dict(zip(cols, r)) for r in cursor.fetchall()]
+
 
 def _clamp_limit(x: Optional[int], default: int = 50, max_cap: int = 1000) -> int:
     try:
@@ -28,6 +36,7 @@ def _clamp_limit(x: Optional[int], default: int = 50, max_cap: int = 1000) -> in
 #     end_ms: int = Field(..., description="End time in epoch ms")
 #     camera_id: Optional[str] = Field(None, description="Optional camera filter")
 #     limit: int = Field(50, description="Max rows (1–1000)")
+
 
 # @tool(args_schema=WhoEnteredArgs)
 @tool
@@ -66,12 +75,18 @@ def who_entered_zone(
         rows = _rows(cur)
     return {
         "ok": True,
-        "filters": {"location_id": location_id, "camera_id": camera_id, "start_ms": start_ms, "end_ms": end_ms},
+        "filters": {
+            "location_id": location_id,
+            "camera_id": camera_id,
+            "start_ms": start_ms,
+            "end_ms": end_ms,
+        },
         "rows": rows,
         "count": len(rows),
         "limit": limit,
         "source": "person_sessions",
     }
+
 
 @tool
 def list_anomaly_event(
@@ -113,7 +128,12 @@ def list_anomaly_event(
         rows = _rows(cur)
     return {
         "ok": True,
-        "filters": {"start_ms": start_ms, "end_ms": end_ms, "location_id": location_id, "camera_id": camera_id},
+        "filters": {
+            "start_ms": start_ms,
+            "end_ms": end_ms,
+            "location_id": location_id,
+            "camera_id": camera_id,
+        },
         "rows": rows,
         "count": len(rows),
         "limit": limit,

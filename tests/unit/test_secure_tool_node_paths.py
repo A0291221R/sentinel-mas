@@ -1,10 +1,13 @@
 import json
-import pytest
 from unittest.mock import patch
+
+import pytest
 from langchain_core.messages import AIMessage, ToolMessage
+
 from sentinel_mas.policy_sentinel.secure_tool_node import SecureToolNode
 
 pytestmark = pytest.mark.integration
+
 
 def _ai_with_tools(*tool_specs):
     """
@@ -23,28 +26,38 @@ def _ai_with_tools(*tool_specs):
         ],
     )
 
-def test_returns_empty_when_no_messages():
+
+def test_returns_empty_when_no_messages() -> None:
     node = SecureToolNode(route="SOP", tools=[])
     out = node({"messages": []})
     assert out == {}
 
-def test_returns_empty_when_last_is_not_ai():
+
+def test_returns_empty_when_last_is_not_ai() -> None:
     node = SecureToolNode(route="SOP", tools=[])
     out = node({"messages": ["not an AIMessage"]})
     assert out == {}
 
-def test_unknown_tool_emits_denied_tool_message(monkeypatch):
+
+def test_unknown_tool_emits_denied_tool_message(monkeypatch) -> None:
     # Empty registry -> unknown tool path
-    monkeypatch.setattr("sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY", {}, raising=True)
+    monkeypatch.setattr(
+        "sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY", {}, raising=True
+    )
 
     node = SecureToolNode(route="SOP", tools=[])
     ai = _ai_with_tools({"name": "not_registered", "args": {"x": 1}})
     state = {
         "messages": [ai],
-        "user_id": "u", "user_role": "operator", "request_id": "r", "session_id": "s"
+        "user_id": "u",
+        "user_role": "operator",
+        "request_id": "r",
+        "session_id": "s",
     }
     out = node(state)
-    assert "messages" in out and len(out["messages"]) == 2  # 1 AIMessage + 1 ToolMessage
+    assert (
+        "messages" in out and len(out["messages"]) == 2
+    )  # 1 AIMessage + 1 ToolMessage
     tm = out["messages"][-1]
     assert tm.name == "not_registered"
     payload = json.loads(tm.content)
@@ -52,7 +65,8 @@ def test_unknown_tool_emits_denied_tool_message(monkeypatch):
     assert payload["status"] == "DENIED"
     assert payload["error_type"] == "UnknownTool"
 
-def test_executes_allowed_tool_and_emits_tool_message(monkeypatch):
+
+def test_executes_allowed_tool_and_emits_tool_message(monkeypatch) -> None:
     # 1) Make the tool resolvable by the node
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY",
@@ -71,8 +85,8 @@ def test_executes_allowed_tool_and_emits_tool_message(monkeypatch):
     ai = _ai_with_tools({"name": "echo", "args": {"x": 7}})
 
     state = {
-        "messages": [ai],                # required by node
-        "user_id": "u",                  # required by context_scope(...)
+        "messages": [ai],  # required by node
+        "user_id": "u",  # required by context_scope(...)
         "user_role": "operator",
         "request_id": "r",
         "session_id": "s",
@@ -91,16 +105,19 @@ def test_executes_allowed_tool_and_emits_tool_message(monkeypatch):
     assert payload["data"] == {"echo": 7}
     assert out.get("halt") is False
 
-def test_permission_error_sets_halt_true(monkeypatch):
+
+def test_permission_error_sets_halt_true(monkeypatch) -> None:
     # Registered tool exists…
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY",
         {"restricted": lambda **k: {"ok": True}},
         raising=True,
     )
+
     # …but guard denies it via secure_execute_tool
     def deny(tool_name, tool_fn, tool_args):
         raise PermissionError("RBAC denied")
+
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool",
         deny,
@@ -111,7 +128,10 @@ def test_permission_error_sets_halt_true(monkeypatch):
     ai = _ai_with_tools({"name": "restricted", "args": {}})
     state = {
         "messages": [ai],
-        "user_id": "u", "user_role": "operator", "request_id": "r", "session_id": "s"
+        "user_id": "u",
+        "user_role": "operator",
+        "request_id": "r",
+        "session_id": "s",
     }
     out = node(state)
     assert out.get("halt") is True
@@ -121,15 +141,18 @@ def test_permission_error_sets_halt_true(monkeypatch):
     assert payload["status"] == "DENIED"
     assert payload["error_type"] == "PermissionError"
 
-def test_value_error_sets_halt_true(monkeypatch):
+
+def test_value_error_sets_halt_true(monkeypatch) -> None:
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY",
         {"bad": lambda **k: (_ for _ in ()).throw(ValueError("bad param"))},
         raising=True,
     )
+
     # secure_execute_tool calls the tool_fn and lets ValueError bubble to node
     def call_then_valueerror(tool_name, tool_fn, tool_args):
         return tool_fn(**tool_args)
+
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool",
         call_then_valueerror,
@@ -140,7 +163,10 @@ def test_value_error_sets_halt_true(monkeypatch):
     ai = _ai_with_tools({"name": "bad", "args": {"x": 1}})
     state = {
         "messages": [ai],
-        "user_id": "u", "user_role": "operator", "request_id": "r", "session_id": "s"
+        "user_id": "u",
+        "user_role": "operator",
+        "request_id": "r",
+        "session_id": "s",
     }
     out = node(state)
     assert out.get("halt") is True
@@ -149,14 +175,17 @@ def test_value_error_sets_halt_true(monkeypatch):
     assert payload["status"] == "BAD_REQUEST"
     assert payload["error_type"] == "ValueError"
 
-def test_generic_exception_sets_halt_true(monkeypatch):
+
+def test_generic_exception_sets_halt_true(monkeypatch) -> None:
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY",
         {"boom": lambda **k: (_ for _ in ()).throw(RuntimeError("boom"))},
         raising=True,
     )
+
     def call_then_boom(tool_name, tool_fn, tool_args):
         return tool_fn(**tool_args)
+
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.secure_execute_tool",
         call_then_boom,
@@ -167,7 +196,10 @@ def test_generic_exception_sets_halt_true(monkeypatch):
     ai = _ai_with_tools({"name": "boom", "args": {}})
     state = {
         "messages": [ai],
-        "user_id": "u", "user_role": "operator", "request_id": "r", "session_id": "s"
+        "user_id": "u",
+        "user_role": "operator",
+        "request_id": "r",
+        "session_id": "s",
     }
     out = node(state)
     assert out.get("halt") is True
@@ -175,7 +207,8 @@ def test_generic_exception_sets_halt_true(monkeypatch):
     assert payload["status"] == "ERROR"
     assert payload["error_type"] == "RuntimeError"
 
-def test_multiple_tool_calls_all_return_messages(monkeypatch):
+
+def test_multiple_tool_calls_all_return_messages(monkeypatch) -> None:
     monkeypatch.setattr(
         "sentinel_mas.policy_sentinel.secure_tool_node.TOOL_REGISTRY",
         {
@@ -194,7 +227,10 @@ def test_multiple_tool_calls_all_return_messages(monkeypatch):
     ai = _ai_with_tools({"name": "a"}, {"name": "b"})
     state = {
         "messages": [ai],
-        "user_id": "u", "user_role": "operator", "request_id": "r", "session_id": "s"
+        "user_id": "u",
+        "user_role": "operator",
+        "request_id": "r",
+        "session_id": "s",
     }
     out = node(state)
     # 1 AIMessage + 2 ToolMessage

@@ -1,22 +1,32 @@
 import time
 from typing import Any, Dict
-from sentinel_mas.policy_sentinel.audit import audit_guard_allow, audit_tool_failure, audit_tool_success, guard_deny_and_raise
-from sentinel_mas.policy_sentinel.runtime import get_context, get_graph_state
+
+from sentinel_mas.policy_sentinel.audit import (
+    audit_guard_allow,
+    audit_tool_failure,
+    audit_tool_success,
+    guard_deny_and_raise,
+)
 from sentinel_mas.policy_sentinel.policy import guard, rbac
+from sentinel_mas.policy_sentinel.runtime import get_context, get_graph_state
+
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
 
 def _safe_preview(result: Any) -> Any:
     # Keep this tiny. DON'T dump full DB rows or PII.
     # Just return a high-level status dict.
     if isinstance(result, dict):
         preview = {
-            k: v for k, v in result.items()
+            k: v
+            for k, v in result.items()
             if k in ("ok", "status_code", "msg", "count", "id")
         }
         return preview
     return {"type": type(result).__name__}
+
 
 from typing import Any, Dict
 
@@ -51,17 +61,13 @@ def call_tool_safely(tool_obj: Any, tool_args: Dict[str, Any]) -> Any:
     raise TypeError(f"Unsupported tool type: {type(tool_obj).__name__}")
 
 
-def guard_tool_call(
-    tool_name: str,
-    args: Dict[str, Any],
-    gate: str
-):
+def guard_tool_call(tool_name: str, args: Dict[str, Any], gate: str):
     """
     Enforce route/role policy and ALWAYS audit the decision.
     On DENY: writes a 'DENY' record, then raises PermissionError.
     On ALLOW: returns sanitized args (so caller uses safe args).
     """
-    ctx =get_context()
+    ctx = get_context()
     state = get_graph_state()
 
     # print(f"\n[guard_tool_call] state: {state}\n")
@@ -71,9 +77,7 @@ def guard_tool_call(
 
     # Prompt injection / jailbreak screen
     allowed, reason = guard.scan_single(
-        user_msg=state.get("user_question", ""), 
-        tool_name=tool_name, 
-        tool_args=args
+        user_msg=state.get("user_question", ""), tool_name=tool_name, tool_args=args
     )
     if not allowed:
         guard_deny_and_raise(tool_name=tool_name, reason=reason, gate=gate)
@@ -82,6 +86,7 @@ def guard_tool_call(
     allowed, reason = rbac.is_allowed(role, route, tool_name)
     if not allowed:
         guard_deny_and_raise(tool_name=tool_name, reason=reason, gate=gate)
+
 
 def secure_execute_tool(tool_name: str, tool_fn, tool_args: dict):
     ctx = get_context()
@@ -95,8 +100,7 @@ def secure_execute_tool(tool_name: str, tool_fn, tool_args: dict):
 
     # 2. Audit that guards passed
     audit_guard_allow(
-        tool_name=tool_name,
-        detail="RBAC, route, and injection checks passed"
+        tool_name=tool_name, detail="RBAC, route, and injection checks passed"
     )
 
     ## 3. Execute tool

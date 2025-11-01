@@ -1,4 +1,3 @@
-
 from sentinel_mas.policy_sentinel.policy.injection_guard import InjectionGuard
 from sentinel_mas.policy_sentinel.policy.rbac_loader import RBACPolicy
 from sentinel_mas.policy_sentinel.policy.security_redactor import SecurityRedactor

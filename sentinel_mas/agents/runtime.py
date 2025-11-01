@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Callable, Dict, Any, List
+from typing import Any, Callable, Dict, List
+
 
 @dataclass
 class AgentRuntime:

@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import TypedDict, List, Literal, Optional, Dict, Any, NotRequired
+from typing import Any, Dict, List, Literal, NotRequired, Optional, TypedDict
+
 from langgraph.graph import MessagesState
+
 
 class TraceEvent(TypedDict):
     ts: float
@@ -36,9 +39,9 @@ class GraphState(MessagesState):
 
     # audit / identity metadata
     user_id: NotRequired[str]
-    user_role: NotRequired[Literal["viewer","operator","supervisor","admin"]]
-    session_id: NotRequired[str]     # stable across a CLI/app session
-    request_id: NotRequired[str]     # new per user turn
+    user_role: NotRequired[Literal["viewer", "operator", "supervisor", "admin"]]
+    session_id: NotRequired[str]  # stable across a CLI/app session
+    request_id: NotRequired[str]  # new per user turn
 
     # --- tool exec logs ---
     tool_calls: List[ToolCallRecord]

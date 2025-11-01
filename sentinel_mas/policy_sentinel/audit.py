@@ -1,10 +1,12 @@
 # sentinel_mas/policy_sentinel/audit.py
 from __future__ import annotations
 
-import uuid, json, sys
-from dataclasses import dataclass, asdict
-from typing import Any, Dict, Optional, Literal
+import json
+import sys
+import uuid
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from typing import Any, Dict, Literal, Optional
 
 # runtime must expose:
 #   get_context() -> SentinelContext (immutable per-request identity)
@@ -12,18 +14,20 @@ from datetime import datetime, timezone
 from sentinel_mas.policy_sentinel import runtime
 from sentinel_mas.policy_sentinel.policy import redactor
 
-
 # ---------------------------------------------------------------------
 # Types
 # ---------------------------------------------------------------------
 
 DecisionType = Literal["ALLOW", "DENY", "ERROR"]
-PhaseType = Literal["pre", "exec", "post"]  # "pre" = guard stage, "post" = after tool call
+PhaseType = Literal[
+    "pre", "exec", "post"
+]  # "pre" = guard stage, "post" = after tool call
 
 
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
+
 
 def _now_iso() -> str:
     """
@@ -43,6 +47,7 @@ def _gen_request_id() -> str:
     """
     return "req_" + uuid.uuid4().hex[:8]
 
+
 def write_audit(event: Dict[str, Any]) -> None:
     """
     Simple dev-mode audit sink: prints structured JSON to stdout.
@@ -56,7 +61,9 @@ def write_audit(event: Dict[str, Any]) -> None:
     """
     try:
         # add timestamp if missing
-        event.setdefault("ts", datetime.utcnow().isoformat(timespec="milliseconds") + "Z")
+        event.setdefault(
+            "ts", datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+        )
 
         # pretty-print compact JSON line
         json_line = json.dumps(event, ensure_ascii=False, sort_keys=True)
@@ -64,11 +71,15 @@ def write_audit(event: Dict[str, Any]) -> None:
 
     except Exception as e:
         # Never crash the app because of audit failure
-        print(f"[AUDIT_ERROR] Failed to log audit event: {e}", file=sys.stderr, flush=True)
+        print(
+            f"[AUDIT_ERROR] Failed to log audit event: {e}", file=sys.stderr, flush=True
+        )
+
 
 # ---------------------------------------------------------------------
 # Canonical audit event schema
 # ---------------------------------------------------------------------
+
 
 @dataclass
 class AuditEvent:
@@ -88,17 +99,17 @@ class AuditEvent:
     tool_args: Dict[str, Any]
 
     # lifecycle
-    phase: PhaseType           # "pre" | "exec" | "post"
-    decision: DecisionType     # "ALLOW" | "DENY" | "ERROR"
-    detail: Optional[str]      # explanation / reason / notes
+    phase: PhaseType  # "pre" | "exec" | "post"
+    decision: DecisionType  # "ALLOW" | "DENY" | "ERROR"
+    detail: Optional[str]  # explanation / reason / notes
 
     # result diagnostic
-    result_status: Optional[str]              # "OK", "ERROR", etc.
-    result_error: Optional[str]               # error string
-    result_payload_preview: Optional[Any]     # SAFE + SMALL preview of tool result
+    result_status: Optional[str]  # "OK", "ERROR", etc.
+    result_error: Optional[str]  # error string
+    result_payload_preview: Optional[Any]  # SAFE + SMALL preview of tool result
 
     # classification
-    event_type: str            # "GUARD_DENY" | "TOOL_EXECUTED" | "TOOL_ERROR"
+    event_type: str  # "GUARD_DENY" | "TOOL_EXECUTED" | "TOOL_ERROR"
 
     # untrusted but useful for forensics
     user_question_snapshot: Optional[str] = None
@@ -111,14 +122,14 @@ def _extract_context() -> Dict[str, Any]:
     - Mutable graph state from runtime.get_graph_state() (working memory)
     - user_question from state (untrusted, but useful to log)
     """
-    ctx_obj = runtime.get_context()       # SentinelContext dataclass (frozen)
-    state = runtime.get_graph_state()     # GraphState dict (mutable)
+    ctx_obj = runtime.get_context()  # SentinelContext dataclass (frozen)
+    state = runtime.get_graph_state()  # GraphState dict (mutable)
 
     # identity (trusted)
     request_id = ctx_obj.request_id or _gen_request_id()
-    user_id    = ctx_obj.user_id or "unknown"
-    role       = ctx_obj.user_role or "operator"
-    route      = ctx_obj.route
+    user_id = ctx_obj.user_id or "unknown"
+    role = ctx_obj.user_role or "operator"
+    route = ctx_obj.route
     session_id = ctx_obj.session_id
 
     # route fallback: maybe router only wrote to graph state
@@ -148,10 +159,8 @@ def build_audit_event(
     phase: PhaseType,
     decision: DecisionType,
     event_type: str,
-
     tool: str,
     tool_args: Dict[str, Any],
-
     detail: Optional[str] = None,
     result_status: Optional[str] = None,
     result_error: Optional[str] = None,
@@ -167,26 +176,20 @@ def build_audit_event(
     evt = AuditEvent(
         event_id=str(uuid.uuid4()),
         ts_iso=_now_iso(),
-
         request_id=ctx["request_id"],
         user_id=ctx["user_id"],
         session_id=ctx["session_id"],
         route=ctx["route"],
         role=ctx["role"],
-
         tool=tool,
         tool_args=redactor.redact_args(tool_args),
-
         phase=phase,
         decision=decision,
         detail=detail,
-
         result_status=result_status,
         result_error=result_error,
         result_payload_preview=result_payload_preview,
-
         event_type=event_type,
-
         user_question_snapshot=ctx["user_question_snapshot"],
     )
 
@@ -234,13 +237,11 @@ def guard_deny_and_raise(
         phase="pre",
         decision="DENY",
         event_type="GUARD_DENY",
-
         tool=tool_name,
         tool_args={
             "_redacted": True,
             "gate": gate,
         },
-
         detail=reason,
         result_status=None,
         result_error=reason,
@@ -249,6 +250,7 @@ def guard_deny_and_raise(
 
     record_audit(audit_event)
     raise PermissionError(reason)
+
 
 def audit_guard_allow(
     *,
@@ -264,7 +266,6 @@ def audit_guard_allow(
         phase="pre",
         decision="ALLOW",
         event_type="GUARD_ALLOW",
-
         tool=tool_name,
         tool_args={"_redacted": True},  # we don’t store real args yet
         detail=detail,
@@ -274,6 +275,7 @@ def audit_guard_allow(
     )
 
     record_audit(audit_event)
+
 
 def audit_tool_success(
     *,
@@ -291,10 +293,8 @@ def audit_tool_success(
         phase="post",
         decision="ALLOW",
         event_type="TOOL_EXECUTED",
-
         tool=tool_name,
         tool_args=raw_args,
-
         detail="Executed",
         result_status="OK",
         result_error=None,
@@ -318,10 +318,8 @@ def audit_tool_failure(
         phase="post",
         decision="ERROR",
         event_type="TOOL_ERROR",
-
         tool=tool_name,
         tool_args=raw_args,
-
         detail="Exception during tool execution",
         result_status="ERROR",
         result_error=f"{type(exc).__name__}: {exc}",

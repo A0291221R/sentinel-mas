@@ -1,20 +1,26 @@
 from __future__ import annotations
-from typing import Annotated, TypedDict, NotRequired, List, Dict, Any
-from pathlib import Path
-import yaml, os
-from pydantic import BaseModel, Field
-from jinja2 import Template
 
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, AIMessage, AnyMessage, ToolMessage, HumanMessage
-from langgraph.graph import MessagesState
-from langchain.chat_models import init_chat_model
+import json
+import os
+from pathlib import Path
 
 # ---------- Graph State (new reducer style) ----------
-from typing import Any, Dict, Literal
-from typing_extensions import NotRequired
+from typing import Annotated, Any, Dict, List, Literal, NotRequired, TypedDict
+
+import yaml
+from jinja2 import Template
+from langchain.chat_models import init_chat_model
+from langchain_core.messages import (
+    AIMessage,
+    AnyMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langchain_openai import ChatOpenAI
 from langgraph.graph import MessagesState
-import json
+from pydantic import BaseModel, Field
+from typing_extensions import NotRequired
 
 from sentinel_mas.agents import AGENT_REGISTRY
 from sentinel_mas.state.graph_state import GraphState as State
@@ -49,39 +55,50 @@ class CrewAgent:
     Callable LangGraph node that renders a system prompt from YAML
     and can call bound tools via tool calls.
     """
+
     def __init__(
         self,
         agent_name: str,
     ):
         self.name = agent_name
         self.runtime = AGENT_REGISTRY[agent_name]
-        base = ChatOpenAI(model=self.runtime.llm_model, temperature=self.runtime.llm_temperature, max_tokens=self.runtime.llm_max_tokens)
+        base = ChatOpenAI(
+            model=self.runtime.llm_model,
+            temperature=self.runtime.llm_temperature,
+            max_tokens=self.runtime.llm_max_tokens,
+        )
         self.tools = list(self.runtime.tools.values())
         self.llm = base.bind_tools(self.tools) if self.tools else base
 
     def build_messages(self, state: State):
-        sys_text = Template(self.runtime.system_prompt).render(**{k: v for k, v in state.items() if k != "messages"})
+        sys_text = Template(self.runtime.system_prompt).render(
+            **{k: v for k, v in state.items() if k != "messages"}
+        )
         return [SystemMessage(content=sys_text), *state["messages"]]
-
 
     def __call__(self, state: State) -> Dict[str, Any]:
         msgs = self.build_messages(state)
         # DO NOT sanitize; LangChain handles pairing internally
 
-        print(f"\n[AGENT {self.name}] IN messages={len(msgs)} "
-              f"start_ms={state.get('start_ms')} end_ms={state.get('end_ms')} time_label={state.get('time_label')}")
+        print(
+            f"\n[AGENT {self.name}] IN messages={len(msgs)} "
+            f"start_ms={state.get('start_ms')} end_ms={state.get('end_ms')} time_label={state.get('time_label')}"
+        )
         # print(f"state: {state}\n")
         try:
             resp = self.llm.invoke(msgs)  # AIMessage (may include tool_calls)
-        
+
         except Exception as e:
             print(f"[AGENT {self.name}] ERROR:", type(e).__name__, e)
             raise
 
         tcalls = getattr(resp, "tool_calls", None)
         if tcalls:
-            
-            print(f"[AGENT {self.name}] tool_calls:", json.dumps(tcalls, ensure_ascii=False))
+
+            print(
+                f"[AGENT {self.name}] tool_calls:",
+                json.dumps(tcalls, ensure_ascii=False),
+            )
 
         # Keep the original AIMessage; just tag the name for traceability
         if isinstance(resp, AIMessage):
@@ -90,4 +107,3 @@ class CrewAgent:
         else:
             ai = AIMessage(content=str(resp), name=self.name)
             return {"messages": [ai]}
-

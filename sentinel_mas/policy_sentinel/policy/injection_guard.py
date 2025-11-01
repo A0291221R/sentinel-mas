@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import re
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+import yaml
 
 
 class InjectionGuard:
@@ -36,9 +37,7 @@ class InjectionGuard:
         ]
 
         # how many distinct targets are allowed in one call
-        self.max_batch_targets: int = int(
-            self._policy.get("max_batch_targets", 3)
-        )
+        self.max_batch_targets: int = int(self._policy.get("max_batch_targets", 3))
 
         # which tools are considered "tracking control" / sensitive
         # (could also move to policy)

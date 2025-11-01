@@ -4,18 +4,18 @@ from __future__ import annotations
 import contextvars
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
-
+from typing import Any, Dict, Optional
 
 # ===============================================================
 # 1. SentinelContext — Immutable per-request identity envelope
 # ===============================================================
 
+
 @dataclass(frozen=True)
 class SentinelContext:
-    user_id: str = "unknown"          # who is acting
-    user_role: str = "operator"       # RBAC role (operator/admin/etc.)
-    route: Optional[str] = None       # SOP / EVENTS / TRACKING / etc.
+    user_id: str = "unknown"  # who is acting
+    user_role: str = "operator"  # RBAC role (operator/admin/etc.)
+    route: Optional[str] = None  # SOP / EVENTS / TRACKING / etc.
     request_id: Optional[str] = None  # trace id for request
     session_id: Optional[str] = None  # conversational session id
 
@@ -73,9 +73,11 @@ def context_scope(
 # 2. GraphState — Mutable working memory per request
 # ===============================================================
 
-_graph_state_var: contextvars.ContextVar[Optional[Dict[str, Any]]] = contextvars.ContextVar(
-    "graph_state",
-    default=None,
+_graph_state_var: contextvars.ContextVar[Optional[Dict[str, Any]]] = (
+    contextvars.ContextVar(
+        "graph_state",
+        default=None,
+    )
 )
 
 
@@ -90,6 +92,7 @@ def get_graph_state() -> Dict[str, Any]:
     if state is None:
         raise RuntimeError("GraphState not set in this context.")
     return state
+
 
 @contextmanager
 def graph_state_scope(state: Dict[str, Any]):

@@ -1,15 +1,22 @@
 from __future__ import annotations
-from typing import List, Dict, Any, Optional
-import psycopg, os
-from pydantic import BaseModel, Field
+
+import os
+from typing import Any, Dict, List, Optional
+
+import psycopg
 
 # Choose the import that matches your LangChain version:
 from langchain_core.tools import tool
-# from langchain.tools import tool  # <- use this line instead if your env needs it
+from pydantic import BaseModel, Field
 
 from ..utils import embed_text_unit
 
-DSN = os.getenv('SENTINEL_DB_URL', 'postgresql://postgres:postgres@localhost:5432/sentinel')
+# from langchain.tools import tool  # <- use this line instead if your env needs it
+
+
+DSN = os.getenv(
+    "SENTINEL_DB_URL", "postgresql://postgres:postgres@localhost:5432/sentinel"
+)
 
 
 # --------- helpers ----------
@@ -26,7 +33,10 @@ def _row_to_hit(r) -> Dict[str, Any]:
 # --------- arg schemas (stable across LC versions) ----------
 class SearchSOPArgs(BaseModel):
     query: str = Field(..., description="User query to search the SOP KB.")
-    k: int = Field(6, ge=1, le=50, description="Number of top matches to return (1–50).")
+    k: int = Field(
+        6, ge=1, le=50, description="Number of top matches to return (1–50)."
+    )
+
 
 class GetSOPArgs(BaseModel):
     id_or_section: str = Field(

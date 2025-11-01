@@ -1,11 +1,19 @@
 # sentinel_mas/policy_sentinel/executor.py
 from __future__ import annotations
-from typing import Dict, Any, List, Optional
+
 import json
+from typing import Any, Dict, List, Optional
+
 from langchain_core.messages import AIMessage, ToolMessage
-from sentinel_mas.policy_sentinel.runtime import context_scope, get_graph_state, graph_state_scope
+
+from sentinel_mas.policy_sentinel.runtime import (
+    context_scope,
+    get_graph_state,
+    graph_state_scope,
+)
 from sentinel_mas.policy_sentinel.secure_executor import secure_execute_tool
 from sentinel_mas.tools import TOOL_REGISTRY
+
 
 class SecureToolNode:
     """
@@ -19,15 +27,18 @@ class SecureToolNode:
           freeze_time_window=True,   # force start_ms/end_ms from state if available
       )
     """
+
     def __init__(
         self,
-        route: str,                           # "SOP" | "EVENTS" | "TRACKING"
+        route: str,  # "SOP" | "EVENTS" | "TRACKING"
         tools: List[Any],
         *,
         agent_name: Optional[str] = None,
         freeze_time_window: bool = False,
-        override_keys: Optional[List[str]] = None,  # extra keys to freeze from state (e.g., ["location_id"])
-        route_from_state: bool = False,       # if True, use state["route"] or state["router_decision"]["route"]
+        override_keys: Optional[
+            List[str]
+        ] = None,  # extra keys to freeze from state (e.g., ["location_id"])
+        route_from_state: bool = False,  # if True, use state["route"] or state["router_decision"]["route"]
     ):
         self.route = route
         self.agent_name = agent_name or f"{route.lower()}_agent"
@@ -50,18 +61,22 @@ class SecureToolNode:
                 r = state["router_decision"].get("route")
             return r or self.route
         return self.route
-    
+
     def _last_ai(self, messages: List[Any]) -> Optional[AIMessage]:
         for m in reversed(messages or []):
             if isinstance(m, AIMessage):
                 return m
         return None
 
-    def _state_overrides(self, args: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
+    def _state_overrides(
+        self, args: Dict[str, Any], state: Dict[str, Any]
+    ) -> Dict[str, Any]:
         # Always coerce ints for ms if present in state
         if self.freeze_time_window and ("start_ms" in state and "end_ms" in state):
-            if "start_ms" in args: args["start_ms"] = int(state["start_ms"])
-            if "end_ms"   in args: args["end_ms"]   = int(state["end_ms"])
+            if "start_ms" in args:
+                args["start_ms"] = int(state["start_ms"])
+            if "end_ms" in args:
+                args["end_ms"] = int(state["end_ms"])
         # Any extra override keys you want to force from state (e.g., location_id)
         for k in self.override_keys:
             if k in state and k in args:
@@ -74,7 +89,7 @@ class SecureToolNode:
         ai = self._last_ai(messages)
         if not ai or not getattr(ai, "tool_calls", None):
             return {}
-        
+
         # print(f'\n[SecureToolNode {self.agent_name}], state: {state}\n')
         tool_calls = ai.tool_calls
         tool_messages: List[ToolMessage] = []
@@ -82,9 +97,9 @@ class SecureToolNode:
         with context_scope(
             user_id=state["user_id"],
             user_role=state["user_role"],
-            request_id=state['request_id'],
+            request_id=state["request_id"],
             session_id=state["session_id"],
-            route=self._get_route(state)
+            route=self._get_route(state),
         ), graph_state_scope(state):
             # sanity debug to prove it's correct now:
             dbg_state = get_graph_state()
@@ -170,7 +185,7 @@ class SecureToolNode:
                         name=name,
                     )
                 )
-                
+
         new_state = {
             **state,
             "messages": state.get("messages", []) + tool_messages,
@@ -179,4 +194,3 @@ class SecureToolNode:
 
         # print("[SecureToolNode RETURN]", new_state.keys(), "halt=", new_state["halt"])
         return new_state
-        

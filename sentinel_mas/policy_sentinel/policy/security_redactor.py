@@ -1,7 +1,8 @@
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
+
 import yaml
-import threading
 
 
 class SecurityRedactor:
@@ -22,7 +23,9 @@ class SecurityRedactor:
             self._keys = {k.lower() for k in redaction.get("keys", [])}
             self._depth = int(redaction.get("max_depth", 3))
 
-    def redact_args(self, args: Optional[Dict[str, Any]], _level: int = 0) -> Union[Dict[str, Any], str]:
+    def redact_args(
+        self, args: Optional[Dict[str, Any]], _level: int = 0
+    ) -> Union[Dict[str, Any], str]:
         if args is None:
             return {}
         if _level > self._depth:
@@ -36,7 +39,14 @@ class SecurityRedactor:
             elif isinstance(v, dict):
                 redacted[k] = self.redact_args(v, _level + 1)
             elif isinstance(v, list):
-                redacted[k] = [self.redact_args(i, _level + 1) if isinstance(i, dict) else self._truncate(i) for i in v]
+                redacted[k] = [
+                    (
+                        self.redact_args(i, _level + 1)
+                        if isinstance(i, dict)
+                        else self._truncate(i)
+                    )
+                    for i in v
+                ]
             else:
                 redacted[k] = self._truncate(v)
         return redacted
@@ -44,5 +54,3 @@ class SecurityRedactor:
     @staticmethod
     def _truncate(v: Any) -> Any:
         return v[:30] + "...(truncated)" if isinstance(v, str) and len(v) > 100 else v
-
-
