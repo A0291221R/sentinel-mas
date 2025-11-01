@@ -1,0 +1,9 @@
+[flake8]
+max-line-length = 88
+extend-ignore = E203,W503
+exclude =
+    .git,
+    .venv, venv, **/.venv,
+    .mypy_cache, .pytest_cache, .ruff_cache,
+    build, dist, htmlcov,
+    test-results, all-test-results, node_modules
