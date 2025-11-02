@@ -11,6 +11,7 @@ langchain-openai
 fastapi
 uvicorn[standard]
 httpx
+python-jose[cryptography]
 # pandas
 
 # ---- Providers / utils ----

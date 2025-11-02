@@ -3,3 +3,17 @@ __pycache__
 uv.lock
 *backup
 experiments
+
+
+# Environment files
+.env
+.env.sentinel
+.env.api
+.env.shared
+.env.local
+.env.*.local
+
+# Keep examples
+!.env.sentinel.example
+!.env.api.example
+!.env.shared.example

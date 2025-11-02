@@ -1,9 +1,20 @@
 [project]
 name = "sentinel-mas"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Multi-Agent System for intelligent task processing"
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Kelvin Lee", email = "chekeng82@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
 dependencies = [
     "bandit>=1.7.7",
     "black>=23.9.0",
@@ -38,6 +49,7 @@ dependencies = [
     "pytest-mock>=3.10.0",
     "pytest-xdist>=3.3.0",
     "python-dateutil>=2.9.0.post0",
+    "python-jose[cryptography]>=3.5.0",
     "pytz>=2025.2",
     "pyyaml>=6.0",
     "requests>=2.32.5",
@@ -48,6 +60,7 @@ dependencies = [
     "streamlit>=1.50.0",
     "tavily-python>=0.7.12",
     "tiktoken>=0.12.0",
+    "types-python-jose>=3.5.0.20250531",
     "uvicorn[standard]>=0.37.0",
     "yfinance>=0.2.66",
 ]
@@ -65,11 +78,14 @@ dev = [
     "safety>=2.3.5",
 ]
 
+[project.urls]
+Homepage = "https://github.com/A0291221R/sentinel_mas"
+Documentation = "https://github.com/A0291221R/sentinel_mas"
+Repository = "https://github.com/A0291221R/sentinel_mas"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
-
 
 [tool.setuptools.packages.find]
 where = ["."]

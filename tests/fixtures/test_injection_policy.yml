@@ -1,6 +1,0 @@
-version: "1.0"
-block_phrases:
-  - "ignore previous instructions"
-  - "bypass rbac"
-  - "dump the database"
-max_batch_targets: 3

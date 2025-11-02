@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 
 from sentinel_mas.config import Config
 
-CENTRAL_URL = Config.CENTRAL_URL
+SENTINEL_CENTRAL_URL = Config.SENTINEL_CENTRAL_URL
 SENTINEL_API_KEY = Config.SENTINEL_API_KEY
 
 # from langchain.tools import tool
@@ -18,7 +18,7 @@ RETRY_BACKOFF = 0.25
 
 
 # print(
-#     f"tracking_tools, CENTRAL_URL: {CENTRAL_URL},
+#     f"tracking_tools, SENTINEL_CENTRAL_URL: {SENTINEL_CENTRAL_URL},
 #   SENTINEL_API_KEY:{SENTINEL_API_KEY}"
 # )
 
@@ -36,7 +36,7 @@ def _request(
     json: Optional[dict] = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Dict[str, Any]:
-    url = f"{CENTRAL_URL.rstrip('/')}{path}"
+    url = f"{SENTINEL_CENTRAL_URL.rstrip('/')}{path}"
     for attempt in range(MAX_RETRIES + 1):
         try:
             with httpx.Client(timeout=timeout, headers=_headers()) as client:

@@ -90,3 +90,97 @@ export PATH="$PWD/tools/sonar-scanner-5.0.1.3006-windows/bin:$PATH"
 ## Verify
 sonar-scanner -v
 ~~~
+
+## Configuration
+
+This project uses separate environment files:
+
+- `.env.sentinel` - Sentinel MAS package configuration
+- `.env.api` - API service configuration  
+- `.env.shared` - Shared configuration
+
+### Setup
+
+1. Copy example files:
+```bash
+cp .env.sentinel.example .env.sentinel
+cp .env.api.example .env.api
+cp .env.shared.example .env.shared
+```
+
+2. Edit `.env.sentinel`:
+   - Set `OPENAI_API_KEY` with your OpenAI key
+
+3. Edit `.env.api`:
+   - Generate `SECRET_KEY`: `openssl rand -hex 32`
+
+4. Run the application:
+```bash
+python scripts/start_api.py
+```
+
+### Environment Files
+
+| File | Purpose | Required Variables |
+|------|---------|-------------------|
+| `.env.sentinel` | Package config | `OPENAI_API_KEY` |
+| `.env.api` | API config | `SECRET_KEY` |
+| `.env.shared` | Shared config | None (has defaults) |
+```
+
+---
+
+## Migration Steps
+
+1. **Backup your current .env:**
+```bash
+cp .env .env.backup
+```
+
+2. **Create the three new files:**
+   - Copy `.env.sentinel` content
+   - Copy `.env.api` content
+   - Copy `.env.shared` content
+
+3. **Migrate your values:**
+   - From old `.env`, copy values to appropriate new files
+   - Remove `SENTINEL_` and `API_` prefixes
+
+4. **Update config files:**
+   - Replace `sentinel_mas/config.py`
+   - Replace `api_service/config.py`
+
+5. **Update .gitignore:**
+   - Add the new environment files
+
+6. **Test:**
+```bash
+python -c "from sentinel_mas.config import Config; print(f'Model: {Config.OPENAI_MODEL}')"
+python -c "from api_service.config import get_api_config; print(f'Port: {get_api_config().PORT}')"
+```
+
+7. **Start the API:**
+```bash
+python scripts/start_api.py
+
+---
+
+## Docker Update
+
+**Update `docker/Dockerfile.api`:**
+
+```dockerfile
+# Copy environment files
+COPY .env.sentinel .env.api .env.shared ./
+```
+
+**Update `docker-compose.yml`:**
+
+```yaml
+services:
+  api:
+    volumes:
+      - ./.env.sentinel:/app/.env.sentinel
+      - ./.env.api:/app/.env.api
+      - ./.env.shared:/app/.env.shared
+```
