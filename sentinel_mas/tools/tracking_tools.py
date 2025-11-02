@@ -17,9 +17,10 @@ MAX_RETRIES = 2
 RETRY_BACKOFF = 0.25
 
 
-print(
-    f"tracking_tools, CENTRAL_URL: {CENTRAL_URL}, SENTINEL_API_KEY:{SENTINEL_API_KEY}"
-)
+# print(
+#     f"tracking_tools, CENTRAL_URL: {CENTRAL_URL},
+#   SENTINEL_API_KEY:{SENTINEL_API_KEY}"
+# )
 
 
 def _headers() -> Dict[str, str]:

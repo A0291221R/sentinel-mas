@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 from sentinel_mas.config import Config
 
 DSN = Config.SENTINEL_DB_URL
-print(f"event_tools, DSN: {DSN}")
+# print(f"event_tools, DSN: {DSN}")
 
 
 def _rows(cursor: Any) -> List[dict]:

@@ -35,7 +35,7 @@ from sentinel_mas.state.graph_state import GraphState as State
 #     session_id: NotRequired[str]     # stable across a CLI/app session
 #     request_id: NotRequired[str]     # new per user turn
 
-print(f"API key: {Config.OPENAI_API_KEY}")
+# print(f"API key: {Config.OPENAI_API_KEY}")
 
 
 # ---------- Callable node ----------

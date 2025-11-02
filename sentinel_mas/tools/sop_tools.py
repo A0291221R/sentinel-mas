@@ -13,7 +13,7 @@ from sentinel_mas.config import Config
 from ..utils import embed_text_unit
 
 DSN = Config.SENTINEL_DB_URL
-print(f"sop_tools, DSN: {DSN}")
+# print(f"sop_tools, DSN: {DSN}")
 
 
 # --------- helpers ----------

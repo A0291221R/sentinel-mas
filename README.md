@@ -74,3 +74,19 @@ black --check .
 # Auto-fix all issues (development mode)
 ./scripts/lint.sh --fix
 ~~~
+
+
+### SonarCube Integration
+~~~ bash
+## Download SonarCube
+cd /d/NUS/Mtech\ IS/Year\ 2\ Sem\ 2/Practice\ Module/Development/sentinel/
+curl -L -o sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-windows.zip
+unzip sonar-scanner.zip -d tools
+
+
+## update environment variable
+export PATH="$PWD/tools/sonar-scanner-5.0.1.3006-windows/bin:$PATH"
+
+## Verify
+sonar-scanner -v
+~~~
