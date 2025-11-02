@@ -80,6 +80,7 @@ jobs:
 
       - name: Run tests with pytest (JUnit + Coverage)
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # For deterministic locale-dependent tests, if any:
           PYTHONHASHSEED: "0"
         run: |
