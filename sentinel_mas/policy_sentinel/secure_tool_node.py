@@ -6,10 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from sentinel_mas.policy_sentinel.runtime import (
-    context_scope,
-    graph_state_scope,
-)
+from sentinel_mas.policy_sentinel.runtime import context_scope, graph_state_scope
 from sentinel_mas.policy_sentinel.secure_executor import secure_execute_tool
 from sentinel_mas.tools import TOOL_REGISTRY
 

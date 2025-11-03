@@ -9,10 +9,7 @@ import yaml
 from langchain_core.messages import AIMessage
 
 # Import after adding to path
-from sentinel_mas.policy_sentinel.runtime import (
-    SentinelContext,
-    set_graph_state,
-)
+from sentinel_mas.policy_sentinel.runtime import SentinelContext, set_graph_state
 
 # Test database configuration
 TEST_DB_URL = "postgresql://postgres:postgres@localhost:5432/sentinel_test"

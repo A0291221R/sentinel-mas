@@ -44,7 +44,7 @@ def supervisor_token():
         data={
             "user_id": "test-supervisor-123",
             "user_role": "supervisor",
-            "email": "supervisor@example.com",
+            "username": "supervisor@example.com",
         },
         expires_delta=timedelta(hours=1),
     )
@@ -63,7 +63,7 @@ def admin_token():
         data={
             "user_id": "test-admin-123",
             "user_role": "admin",
-            "email": "admin@example.com",
+            "username": "admin@example.com",
         },
         expires_delta=timedelta(hours=1),
     )
@@ -82,7 +82,7 @@ def user_token():
         data={
             "user_id": "test-user-123",
             "user_role": "user",
-            "email": "user@example.com",
+            "username": "user@example.com",
         },
         expires_delta=timedelta(hours=1),
     )

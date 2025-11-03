@@ -19,7 +19,7 @@ Response back to Client
 # Step 1: Login
 POST /api/v1/auth/login
 {
-    "email": "user@example.com",
+    "username": "user@example.com",
     "password": "password123"
 }
 
@@ -111,7 +111,7 @@ curl http://localhost:8000/health
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com",
+    "username": "user@example.com",
     "password": "password123"
   }'
 # Response 
@@ -136,7 +136,7 @@ curl -X POST http://localhost:8000/api/v1/queries \
 {
   "user_id": "user-abc123",
   "user_role": "supervisor",
-  "email": "user@example.com",
+  "username": "user@example.com",
   "token_expires": "2024-01-15T10:30:00"
 }
 

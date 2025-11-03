@@ -89,14 +89,26 @@ def finalize_error_node(state: State) -> Dict[str, Any]:
             else:
                 payload = raw  # already a list/dict; skip decoding
 
-            payload = json.loads(payload)
+            if isinstance(raw, str):
+                try:
+                    payload = json.loads(raw)
+                except json.JSONDecodeError as e:
+                    print(f"failed to decode JSON: {e}")
+                    payload = {"error": str(e)}
+            else:
+                payload = raw  # already a dict or list; no need to decode
+
             if payload.get("status") == "DENIED":
                 user_friendly = (
-                    "Access denied. You are not allowed to retrieve that information."
+                    payload.get("msg")
+                    or """Access denied. You are not allowed \
+                        to retrieve that information."""
                 )
             elif payload.get("status") == "ERROR":
                 user_friendly = (
-                    "The request could not be completed due to an internal error."
+                    payload.get("msg")
+                    or """The request could not be completed due \
+                        to an internal error."""
                 )
         except Exception:
             pass

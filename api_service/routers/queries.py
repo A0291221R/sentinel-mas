@@ -60,7 +60,7 @@ async def create_query(
     auth_context = AuthContext(
         user_id=current_user.user_id,
         user_role=current_user.user_role,
-        email=current_user.email,
+        username=current_user.username,
         session_id=f"api-{uuid.uuid4().hex[:10]}",
         request_id=f"req-{uuid.uuid4().hex[:10]}",
     )
@@ -90,7 +90,7 @@ async def get_current_user_info(
         current_user: Extracted from JWT token (automatic)
 
     Returns:
-        UserInfo with user_id, role, email, etc.
+        UserInfo with user_id, role, username, etc.
 
     Example Request:
         GET /api/v1/queries/me
@@ -101,14 +101,14 @@ async def get_current_user_info(
         {
             "user_id": "user-abc123",
             "user_role": "supervisor",
-            "email": "user@example.com",
+            "username": "user@example.com",
             "token_expires": "2024-01-15T10:30:00"
         }
     """
     return UserInfo(
         user_id=current_user.user_id,
         user_role=current_user.user_role,
-        email=current_user.email,
+        username=current_user.username,
         token_expires=current_user.exp.isoformat() if current_user.exp else None,
     )
 

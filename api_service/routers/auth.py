@@ -32,12 +32,12 @@ async def login(credentials: LoginRequest) -> LoginResponse:
     **TODO: Replace with actual database authentication**
 
     Currently uses mock authentication. In production, you should:
-    1. Query database for user by email
+    1. Query database for user by username
     2. Verify password hash (use bcrypt)
     3. Return user data and token
 
     Args:
-        credentials: LoginRequest with email and password
+        credentials: LoginRequest with username and password
 
     Returns:
         LoginResponse with access_token and user info
@@ -48,7 +48,7 @@ async def login(credentials: LoginRequest) -> LoginResponse:
     Example Request:
         POST /api/v1/auth/login
         {
-            "email": "user@example.com",
+            "username": "user@example.com",
             "password": "password123"
         }
 
@@ -61,19 +61,19 @@ async def login(credentials: LoginRequest) -> LoginResponse:
         }
     """
     # Mock authentication - REPLACE WITH YOUR DATABASE LOGIC
-    if credentials.email and credentials.password:
+    if credentials.username and credentials.password:
         # TODO: Replace this with actual database lookup
         # Example:
-        # user = db.query(User).filter(User.email == credentials.email).first()
+        # user = db.query(User).filter(User.username == credentials.username).first()
         # if not user or not verify_password(
         #   credentials.password, user.hashed_password):
         #     raise HTTPException(401, "Invalid credentials")
 
-        user_record = MOCK_USERS.get(credentials.email)
+        user_record = MOCK_USERS.get(credentials.username)
         if not user_record or user_record["password"] != credentials.password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
+                detail="Invalid username or password",
             )
 
         # Mock user_id generation
@@ -85,7 +85,7 @@ async def login(credentials: LoginRequest) -> LoginResponse:
             data={
                 "user_id": user_id,
                 "user_role": user_record["user_role"],
-                "email": credentials.email,
+                "username": credentials.username,
             },
             expires_delta=access_token_expires,
         )

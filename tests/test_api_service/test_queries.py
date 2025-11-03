@@ -242,16 +242,16 @@ class TestGetUserInfo:
         print(f"  User ID: {data['user_id']}")
         print(f"  Role: {data['user_role']}")
 
-    def test_get_user_info_includes_email(self, client, auth_headers):
-        """Test user info includes email if present"""
+    def test_get_user_info_includes_username(self, client, auth_headers):
+        """Test user info includes username if present"""
         response = client.get("/api/v1/queries/me", headers=auth_headers)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
-        if "email" in data:
-            assert "@" in data["email"]
-            print(f"  Email: {data['email']}")
+        if "username" in data:
+            assert "@" in data["username"]
+            print(f"  username: {data['username']}")
 
     def test_get_user_info_no_auth(self, client):
         """

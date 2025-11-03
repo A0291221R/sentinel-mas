@@ -18,7 +18,7 @@ class TestAuthLogin:
         """
         response = client.post(
             "/api/v1/auth/login",
-            json={"email": "supervisor@example.com", "password": "supervisor123"},
+            json={"username": "supervisor@example.com", "password": "supervisor123"},
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -40,27 +40,27 @@ class TestAuthLogin:
         print(f"  User ID: {data['user_id']}")
         print(f"  Role: {data['user_role']}")
 
-    def test_login_with_different_email(self, client):
-        """Test login works with different email addresses"""
+    def test_login_with_different_username(self, client):
+        """Test login works with different username"""
         response = client.post(
             "/api/v1/auth/login",
-            json={"email": "another@example.com", "password": "pass456"},
+            json={"username": "another@example.com", "password": "pass456"},
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         data = response.json()
         assert "access_token" not in data
 
-    def test_login_missing_email(self, client):
+    def test_login_missing_username(self, client):
         """
-        Test login with missing email field
+        Test login with missing username field
 
         Expected: 422 Unprocessable Entity
         """
         response = client.post("/api/v1/auth/login", json={"password": "password123"})
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        print("✓ Correctly rejects missing email")
+        print("✓ Correctly rejects missing username")
 
     def test_login_missing_password(self, client):
         """
@@ -68,7 +68,9 @@ class TestAuthLogin:
 
         Expected: 422 Unprocessable Entity
         """
-        response = client.post("/api/v1/auth/login", json={"email": "test@example.com"})
+        response = client.post(
+            "/api/v1/auth/login", json={"username": "test@example.com"}
+        )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         print("✓ Correctly rejects missing password")
@@ -83,18 +85,18 @@ class TestAuthLogin:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_login_empty_email(self, client):
+    def test_login_empty_username(self, client):
         """
-        Test login with empty email
+        Test login with empty username
 
         Expected: 422 Unprocessable Entity
         """
         response = client.post(
-            "/api/v1/auth/login", json={"email": "", "password": "password123"}
+            "/api/v1/auth/login", json={"username": "", "password": "password123"}
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        print("✓ Correctly rejects empty email")
+        print("✓ Correctly rejects empty username")
 
     def test_login_empty_password(self, client):
         """
@@ -103,7 +105,7 @@ class TestAuthLogin:
         Expected: 422 Unprocessable Entity
         """
         response = client.post(
-            "/api/v1/auth/login", json={"email": "test@example.com", "password": ""}
+            "/api/v1/auth/login", json={"username": "test@example.com", "password": ""}
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -115,7 +117,9 @@ class TestAuthLogin:
 
         Expected: 422 Unprocessable Entity
         """
-        response = client.post("/api/v1/auth/login", json={"email": "", "password": ""})
+        response = client.post(
+            "/api/v1/auth/login", json={"username": "", "password": ""}
+        )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -143,7 +147,7 @@ class TestAuthLogin:
         response = client.post(
             "/api/v1/auth/login",
             json={
-                "email": "viewer@example.com",
+                "username": "viewer@example.com",
                 "password": "viewer123",
                 "extra_field": "should be ignored",
             },

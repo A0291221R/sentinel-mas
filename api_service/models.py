@@ -16,12 +16,12 @@ class LoginRequest(BaseModel):
 
     Example:
         {
-            "email": "user@example.com",
+            "username": "user@example.com",
             "password": "password123"
         }
     """
 
-    email: str = Field(..., description="User email")
+    username: str = Field(..., description="User username")
     password: str = Field(..., description="User password")
 
 
@@ -94,14 +94,14 @@ class UserInfo(BaseModel):
         {
             "user_id": "user-abc123",
             "user_role": "supervisor",
-            "email": "user@example.com",
+            "username": "user@example.com",
             "token_expires": "2024-01-15T10:30:00"
         }
     """
 
     user_id: str
     user_role: str
-    email: Optional[str] = None
+    username: Optional[str] = None
     token_expires: Optional[str] = None
 
 

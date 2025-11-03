@@ -20,7 +20,11 @@ class TestTokenCreation:
 
         Expected: Valid JWT token string
         """
-        data = {"user_id": "test123", "user_role": "admin", "email": "test@example.com"}
+        data = {
+            "user_id": "test123",
+            "user_role": "admin",
+            "username": "test@example.com",
+        }
 
         token = create_access_token(data)
 
@@ -98,7 +102,7 @@ class TestTokenDecoding:
         data = {
             "user_id": "test123",
             "user_role": "supervisor",
-            "email": "test@example.com",
+            "username": "test@example.com",
         }
 
         token = create_access_token(data)
@@ -110,16 +114,16 @@ class TestTokenDecoding:
         # Check fields
         assert decoded.user_id == "test123"
         assert decoded.user_role == "supervisor"
-        assert decoded.email == "test@example.com"
+        assert decoded.username == "test@example.com"
         assert decoded.exp is not None
 
         print("✓ Token decoded successfully")
         print(f"  User ID: {decoded.user_id}")
         print(f"  Role: {decoded.user_role}")
-        print(f"  Email: {decoded.email}")
+        print(f"  username: {decoded.username}")
 
-    def test_decode_token_without_email(self):
-        """Test decoding token without email field"""
+    def test_decode_token_without_username(self):
+        """Test decoding token without username field"""
         data = {"user_id": "test123", "user_role": "user"}
 
         token = create_access_token(data)
@@ -127,8 +131,8 @@ class TestTokenDecoding:
 
         assert decoded.user_id == "test123"
         assert decoded.user_role == "user"
-        assert decoded.email in ["", None]
-        print("✓ Token without email decoded successfully")
+        assert decoded.username in ["", None]
+        print("✓ Token without username decoded successfully")
 
     def test_decode_invalid_token_format(self):
         """

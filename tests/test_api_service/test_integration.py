@@ -21,7 +21,7 @@ class TestCompleteUserFlow:
         print("\n--- Step 1: Login ---")
         login_response = client.post(
             "/api/v1/auth/login",
-            json={"email": "operator@example.com", "password": "operator123"},
+            json={"username": "operator@example.com", "password": "operator123"},
         )
 
         assert login_response.status_code == status.HTTP_200_OK
@@ -178,7 +178,7 @@ class TestErrorHandling:
         """Test requests without Content-Type header"""
         response = client.post(
             "/api/v1/auth/login",
-            data='{"email": "test@example.com", "password": "test"}',
+            data='{"username": "test@example.com", "password": "test"}',
         )
         # Should still work or return proper error
         assert response.status_code in [200, 401, 422]

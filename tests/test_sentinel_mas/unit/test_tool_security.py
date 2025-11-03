@@ -7,10 +7,7 @@ from langchain_core.messages import HumanMessage, ToolMessage
 
 # Import types for type checking, but they won't be imported at runtime
 if TYPE_CHECKING:
-    from sentinel_mas.agents.crew import (
-        finalize_error_node,
-        post_tool_router,
-    )
+    from sentinel_mas.agents.crew import finalize_error_node, post_tool_router
     from sentinel_mas.state.graph_state import GraphState
 
 

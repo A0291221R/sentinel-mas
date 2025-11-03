@@ -29,7 +29,7 @@ class TokenData(BaseModel):
 
     user_id: str  # Unique user identifier
     user_role: str  # User's role (admin, supervisor, user)
-    email: Optional[str] = None  # User's email
+    username: Optional[str] = None  # User's username
     exp: Optional[datetime] = None  # Token expiration time
 
 
@@ -43,7 +43,7 @@ class AuthContext(BaseModel):
 
     user_id: str
     user_role: str
-    email: Optional[str] = None
+    username: Optional[str] = None
     session_id: str  # Unique session identifier
     request_id: str  # Unique request identifier
 
@@ -63,7 +63,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         token = create_access_token({
             "user_id": "user123",
             "user_role": "supervisor",
-            "email": "user@example.com"
+            "username": "user@example.com"
         })
     """
     to_encode = data.copy()
@@ -110,7 +110,7 @@ def decode_token(token: str) -> TokenData:
         # Extract user data from payload
         user_id: str = payload.get("user_id", "")
         user_role: str = payload.get("user_role", "")
-        email: str = payload.get("email", "")
+        username: str = payload.get("username", "")
 
         # Validate required fields
         if user_id is None or user_role is None:
@@ -123,7 +123,7 @@ def decode_token(token: str) -> TokenData:
         return TokenData(
             user_id=user_id,
             user_role=user_role,
-            email=email,
+            username=username,
             exp=datetime.fromtimestamp(payload.get("exp", ""), tz=timezone.utc),
         )
 

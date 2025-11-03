@@ -3,38 +3,7 @@ import { Send, LogOut, History, Lightbulb, RefreshCw } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:8001'; // Update with your Sentinel API URL
 
-const EXAMPLE_PROMPTS = {
-  sop: [
-    "How do I escalate a Level-2 anomaly from the Alerts dashboard? What’s the deadline and who to notify?",
-    "What are the safe restart steps for Edge-Sentinel on a field device?",
-    "How do I acknowledge an alert and mark it False Positive with a note?",
-    "Central dashboard is down—what’s the outage procedure and update cadence?",
-    "How do I assign an identity to a track using similarity threshold rules?",
-    "What is the access revocation process for an offboarded user?",
-    "How do I submit model feedback when I see a false positive?",
-    "What’s the weekly audit checklist—what logs do I export and review?"
-  ],
-  events: [
-    "Who entered loc-iss-exit-1 on 13-Oct-2025 time between 15:00–18:00 SGT?",
-    "Who entered loc-iss-exit-1 from 2025-10-13 15:00–18:30 SGT, only cam01.",
-    "How many people visited loc-iss-exit-1 on 13-Oct-2025? Give total and unique visitors.",
-    "List anomaly events for loc-iss-exit-1 on 2025-10-13 15:00–18:00, cam01, top 20.",
-    "Show entries for Location=loc-iss-exit-1 on 13-Oct-2025 from 15:15–16:00 SGT; include resolved_id if known.",
-    "How many unique visitors at loc-iss-exit-1 on 13-Oct-2025 during lunch 15:00–16:00?",
-    "List anomaly episodes with incident='anomaly' in loc-iss-exit-1 on 13-Oct-2025 from 15:00–17:30 with confidence.",
-    "Who entered loc-iss-exit-1 on 13-Oct-2025 between 15:00–19:00, filtered to cam01?",
-  ],
-  tracking: [
-    "Start tracking resolved_id=id_1760340716573_61ff63dd.",
-    "Cancel tracking for resolved_id=id_1760340716573_61ff63dd.",
-    "What’s the tracking status of resolved_id=id_1760340716573_61ff63dd?",
-    "Start tracking resolved_id=id_1760340716573_61ff63dd and then report status.",
-    "Cancel tracking for resolved_id=id_1760340716573_61ff63dd; confirm is_tracked=false.",
-    "Check status for resolved_id=id_1760340716573_61ff63dd and show last movement insight.",
-    "Start tracking resolved_id=id_1760340716573_61ff63dd; if error, return the server message.",
-    "Get status for resolved_id=id_1760340716573_61ff63dd and include the ack_id if available."
-  ]
-};
+
 
 export default function SentinelChatbot() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -51,11 +20,29 @@ export default function SentinelChatbot() {
   const [showHistory, setShowHistory] = useState(false);
   const [showExamples, setShowExamples] = useState(true);
   const [activeCategory, setActiveCategory] = useState('sop');
+  const [examplePrompts, setExamplePrompts] = useState({
+    sop: [],
+    events: [],
+    tracking: []
+  });
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
+    // Load example prompts from JSON
+    fetch('/example-prompts.json')
+      .then(response => response.json())
+      .then(data => setExamplePrompts(data))
+      .catch(error => {
+        console.error('Failed to load example prompts:', error);
+        setExamplePrompts({
+          sop: ["How do I escalate a Level-2 anomaly?"],
+          events: ["Who entered loc-iss-exit-1 on 13-Oct-2025?"],
+          tracking: ["Start tracking resolved_id=id_1760340716573_61ff63dd."]
+        });
+      });
+
     // Check for stored token on mount
     const storedToken = localStorage.getItem('sentinel_token');
     const storedHistory = localStorage.getItem('query_history');
@@ -121,11 +108,11 @@ export default function SentinelChatbot() {
       {
         id: Date.now(),
         query,
-        response: response.substring(0, 100) + '...',
+        response, // Store full response
         timestamp: new Date().toISOString(),
       },
       ...queryHistory,
-    ].slice(0, 20); // Keep only last 20
+    ].slice(0, 20); // Keep only last 20 Q&A pairs
     
     setQueryHistory(newHistory);
     localStorage.setItem('query_history', JSON.stringify(newHistory));
@@ -193,10 +180,24 @@ export default function SentinelChatbot() {
     inputRef.current?.focus();
   };
 
-  const handleHistoryClick = (query) => {
-    setInput(query);
+  const handleHistoryClick = (item) => {
+    // History is read-only, just display it in the chat
     setShowHistory(false);
-    inputRef.current?.focus();
+    const historyMessages = [
+      {
+        id: Date.now(),
+        role: 'user',
+        content: item.query,
+        timestamp: item.timestamp,
+      },
+      {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: item.response,
+        timestamp: item.timestamp,
+      }
+    ];
+    setMessages((prev) => [...prev, ...historyMessages]);
   };
 
   const handleKeyPress = (e) => {
@@ -321,23 +322,34 @@ export default function SentinelChatbot() {
         <div className="flex-1 overflow-y-auto">
           {showHistory ? (
             <div className="p-4">
-              <h3 className="font-semibold text-gray-800 mb-3">Recent Queries</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">Query History (Last 20)</h3>
               {queryHistory.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-8">No history yet</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {queryHistory.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => handleHistoryClick(item.query)}
-                      className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                      onClick={() => handleHistoryClick(item)}
+                      className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                     >
-                      <p className="text-sm font-medium text-gray-800 line-clamp-2">
-                        {item.query}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(item.timestamp).toLocaleString()}
-                      </p>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Question:</p>
+                          <p className="text-sm font-medium text-gray-800 line-clamp-2">
+                            {item.query}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Answer:</p>
+                          <p className="text-sm text-gray-600 line-clamp-3">
+                            {item.response}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {new Date(item.timestamp).toLocaleString()}
+                        </p>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -348,7 +360,7 @@ export default function SentinelChatbot() {
               <h3 className="font-semibold text-gray-800 mb-3">Example Prompts</h3>
               
               <div className="flex gap-2 mb-4">
-                {Object.keys(EXAMPLE_PROMPTS).map((category) => (
+                {Object.keys(examplePrompts).map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
@@ -364,7 +376,7 @@ export default function SentinelChatbot() {
               </div>
 
               <div className="space-y-2">
-                {EXAMPLE_PROMPTS[activeCategory].map((prompt, index) => (
+                {examplePrompts[activeCategory].map((prompt, index) => (
                   <button
                     key={index}
                     onClick={() => handleExampleClick(prompt)}

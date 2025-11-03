@@ -9,10 +9,7 @@ from langgraph.graph import END
 pytestmark = pytest.mark.integration
 
 if TYPE_CHECKING:
-    from sentinel_mas.agents.crew import (
-        parse_time_node,
-        router_condition,
-    )
+    from sentinel_mas.agents.crew import parse_time_node, router_condition
     from sentinel_mas.state.graph_state import GraphState
 
 

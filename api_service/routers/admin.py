@@ -44,7 +44,7 @@ async def admin_query(
     auth_context = AuthContext(
         user_id=current_user.user_id,
         user_role=current_user.user_role,
-        email=current_user.email,
+        username=current_user.username,
         session_id=f"admin-{uuid.uuid4().hex[:10]}",
         request_id=f"req-{uuid.uuid4().hex[:10]}",
     )

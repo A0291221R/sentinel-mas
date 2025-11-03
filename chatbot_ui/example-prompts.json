@@ -1,0 +1,32 @@
+{
+  "sop": [
+    "How do I escalate a Level-2 anomaly from the Alerts dashboard? What's the deadline and who to notify?",
+    "What are the safe restart steps for Edge-Sentinel on a field device?",
+    "How do I acknowledge an alert and mark it False Positive with a note?",
+    "Central dashboard is down—what's the outage procedure and update cadence?",
+    "How do I assign an identity to a track using similarity threshold rules?",
+    "What is the access revocation process for an offboarded user?",
+    "How do I submit model feedback when I see a false positive?",
+    "What's the weekly audit checklist—what logs do I export and review?"
+  ],
+  "events": [
+    "Who entered loc-iss-exit-1 on 13-Oct-2025 time between 15:00–18:00 SGT?",
+    "Who entered loc-iss-exit-1 from 2025-10-13 15:00–18:30 SGT, only cam01.",
+    "How many people visited loc-iss-exit-1 on 13-Oct-2025? Give total and unique visitors.",
+    "List anomaly events for loc-iss-exit-1 on 2025-10-13 15:00–18:00, cam01, top 20.",
+    "Show entries for Location=loc-iss-exit-1 on 13-Oct-2025 from 15:15–16:00 SGT; include resolved_id if known.",
+    "How many unique visitors at loc-iss-exit-1 on 13-Oct-2025 during lunch 15:00–16:00?",
+    "List anomaly episodes with incident='anomaly' in loc-iss-exit-1 on 13-Oct-2025 from 15:00–17:30 with confidence.",
+    "Who entered loc-iss-exit-1 on 13-Oct-2025 between 15:00–19:00, filtered to cam01?"
+  ],
+  "tracking": [
+    "Start tracking resolved_id=id_1760340716573_61ff63dd.",
+    "Cancel tracking for resolved_id=id_1760340716573_61ff63dd.",
+    "What's the tracking status of resolved_id=id_1760340716573_61ff63dd?",
+    "Start tracking resolved_id=id_1760340716573_61ff63dd and then report status.",
+    "Cancel tracking for resolved_id=id_1760340716573_61ff63dd; confirm is_tracked=false.",
+    "Check status for resolved_id=id_1760340716573_61ff63dd and show last movement insight.",
+    "Start tracking resolved_id=id_1760340716573_61ff63dd; if error, return the server message.",
+    "Get status for resolved_id=id_1760340716573_61ff63dd and include the ack_id if available."
+  ]
+}
