@@ -101,14 +101,13 @@ def finalize_error_node(state: State) -> Dict[str, Any]:
             if payload.get("status") == "DENIED":
                 user_friendly = (
                     payload.get("msg")
-                    or """Access denied. You are not allowed \
-                        to retrieve that information."""
+                    or "Access denied. You are not allowed "
+                    "to retrieve that information."
                 )
             elif payload.get("status") == "ERROR":
                 user_friendly = (
                     payload.get("msg")
-                    or """The request could not be completed due \
-                        to an internal error."""
+                    or "The request could not be completed due " "to an internal error."
                 )
         except Exception:
             pass
