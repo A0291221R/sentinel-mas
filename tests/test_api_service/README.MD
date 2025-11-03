@@ -69,3 +69,6 @@ pytest tests/test_api_service/ -v --cov=api_service --cov-report=html
 
 # Run All test cases
 pytest tests/ -v --cov=sentinel_mas --cov=api_service --cov-report=html
+
+# Run bandit locally
+uv run bandit -r sentinel_mas/ api_service/

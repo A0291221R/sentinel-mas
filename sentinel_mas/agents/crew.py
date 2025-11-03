@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -92,8 +93,9 @@ def finalize_error_node(state: State) -> State:
                 user_friendly = (
                     "The request could not be completed due to an internal error."
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            # Silently handle JSON parsing errors, use default message
+            logging.debug(f"Failed to parse tool message: {e}")
 
     assistant_msg = AIMessage(
         content=user_friendly,
@@ -194,7 +196,7 @@ def router_condition(state: State) -> str:
             print(f'route has been set to "{route}"')
             # set_graph_state(state)
             return route
-    except Exception:
-        pass
+    except Exception as e:
+        logging.debug(f"Router condition parsing failed: {e}")
 
     return END

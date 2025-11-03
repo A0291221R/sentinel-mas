@@ -31,7 +31,7 @@ class APIConfig(BaseSettings):
     # ============================================
     # Server Settings
     # ============================================
-    HOST: str = "0.0.0.0"  # Listen on all interfaces
+    HOST: str = "0.0.0.0"  # nosec B104 - Required for Docker/container environments
     PORT: int = 8000  # API server port
     V1_PREFIX: str = "/api/v1"  # API version prefix
 
@@ -77,7 +77,8 @@ class APIConfig(BaseSettings):
 
         Raises ValueError if SECRET_KEY is not properly set
         """
-        if not self.SECRET_KEY or self.SECRET_KEY == "change-me":
+        DEFAULT_SECRET = "change-me"  # nosec B105 - Used only for validation
+        if not self.SECRET_KEY or self.SECRET_KEY == DEFAULT_SECRET:
             raise ValueError(
                 "SECRET_KEY must be set in .env.api\n"
                 "Generate one with: openssl rand -hex 32"

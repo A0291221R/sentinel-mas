@@ -24,11 +24,4 @@ def load_langchain_decorated_tools() -> Dict[str, LCBaseTool]:
 
 def load_tools() -> Dict[str, LCBaseTool]:
     reg = load_langchain_decorated_tools()
-    try:
-        # from .mcp_loader import load_mcp_tools_from_env
-        # reg.update(load_mcp_tools_from_env())
-        pass
-    except Exception:
-        # Don’t break startup if MCP not configured
-        pass
     return reg
