@@ -18,6 +18,10 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: write      # Required for creating releases
+  id-token: write      # Required for PyPI trusted publishing
+
 env:
   PYTHON_VERSION: "3.12"
   PACKAGE_NAME: "sentinel-mas"
