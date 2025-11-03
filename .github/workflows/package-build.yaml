@@ -1,0 +1,486 @@
+name: Stage 2 - Package Building & Publishing
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'sentinel_mas/**'
+      - 'pyproject.toml'
+      - 'setup.py'
+      - 'setup.cfg'
+      - 'MANIFEST.in'
+  release:
+    types: [created, published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version (e.g., 0.1.0)'
+        required: false
+        type: string
+
+env:
+  PYTHON_VERSION: "3.12"
+  PACKAGE_NAME: "sentinel-mas"
+
+jobs:
+  # ==============================================================================
+  # JOB 1: Version Management & Validation
+  # ==============================================================================
+  version-check:
+    name: "Version Management"
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      is_release: ${{ steps.check_release.outputs.is_release }}
+      should_publish: ${{ steps.check_publish.outputs.should_publish }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for version detection
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packaging tools
+        run: |
+          pip install toml packaging
+
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: |
+          VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Package version: ${VERSION}"
+
+      - name: Check if this is a release
+        id: check_release
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]] || [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "🏷️ This is a release build"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "🔨 This is a development build"
+          fi
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z or X.Y.Z-suffix (e.g., 0.1.0 or 0.1.0-alpha)"
+            exit 1
+          fi
+          echo "✅ Version format valid: $VERSION"
+
+      - name: Check for version conflicts
+        if: steps.check_release.outputs.is_release == 'true'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # Check if this version already exists as a git tag
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "⚠️ Warning: Version v${VERSION} already exists as a git tag"
+            echo "Consider bumping the version in pyproject.toml"
+          else
+            echo "✅ Version v${VERSION} is new"
+          fi
+
+      - name: Determine publish strategy
+        id: check_publish
+        run: |
+          if [[ "${{ steps.check_release.outputs.is_release }}" == "true" ]]; then
+            echo "should_publish=pypi" >> $GITHUB_OUTPUT
+            echo "📤 Will publish to PyPI"
+          else
+            echo "should_publish=artifact" >> $GITHUB_OUTPUT
+            echo "📦 Will upload as GitHub artifact only"
+          fi
+
+  # ==============================================================================
+  # JOB 2: Build Python Package (Wheel + Source Distribution)
+  # ==============================================================================
+  build-package:
+    name: "Build Python Package"
+    runs-on: ubuntu-latest
+    needs: version-check
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install build tools
+        run: |
+          uv pip install --system build setuptools wheel twine
+          echo "✅ Build tools installed"
+
+      - name: Verify package structure
+        run: |
+          echo "📁 Verifying package structure..."
+          
+          # Check required files
+          if [ ! -f "pyproject.toml" ]; then
+            echo "❌ pyproject.toml not found"
+            exit 1
+          fi
+          
+          if [ ! -d "sentinel_mas" ]; then
+            echo "❌ sentinel_mas package directory not found"
+            exit 1
+          fi
+          
+          if [ ! -f "sentinel_mas/__init__.py" ]; then
+            echo "❌ sentinel_mas/__init__.py not found"
+            exit 1
+          fi
+          
+          echo "✅ Package structure verified"
+
+      - name: Create package metadata
+        run: |
+          mkdir -p .build-metadata
+          cat > .build-metadata/build-info.txt << EOF
+          Build Information
+          ==================
+          Package: ${{ env.PACKAGE_NAME }}
+          Version: ${{ needs.version-check.outputs.version }}
+          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Git Commit: ${{ github.sha }}
+          Git Ref: ${{ github.ref }}
+          Build Type: ${{ needs.version-check.outputs.is_release == 'true' && 'Release' || 'Development' }}
+          Python Version: ${{ env.PYTHON_VERSION }}
+          EOF
+          
+          cat .build-metadata/build-info.txt
+
+      - name: Build wheel and source distribution
+        run: |
+          echo "🔨 Building package..."
+          python -m build --sdist --wheel --outdir dist/
+          echo "✅ Package built successfully"
+
+      - name: List built packages
+        run: |
+          echo "📦 Built packages:"
+          ls -lh dist/
+          
+          echo ""
+          echo "📊 Package details:"
+          for file in dist/*; do
+            echo "  - $(basename $file) ($(du -h $file | cut -f1))"
+          done
+
+      - name: Verify package contents
+        run: |
+          echo "🔍 Verifying wheel contents..."
+          
+          # Install wheel inspection tool
+          uv pip install --system check-wheel-contents
+          
+          # Check wheel
+          WHEEL_FILE=$(ls dist/*.whl)
+          echo "Inspecting: $WHEEL_FILE"
+          
+          # List contents
+          python -m zipfile -l "$WHEEL_FILE" | head -30
+          
+          # Verify it includes sentinel_mas
+          if python -m zipfile -l "$WHEEL_FILE" | grep -q "sentinel_mas"; then
+            echo "✅ Package contains sentinel_mas module"
+          else
+            echo "❌ Package does not contain sentinel_mas module"
+            exit 1
+          fi
+
+      - name: Check package with twine
+        run: |
+          echo "🔍 Running twine check..."
+          twine check dist/*
+          echo "✅ Package passed twine validation"
+
+      - name: Generate package hash
+        run: |
+          echo "🔐 Generating package hashes..."
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+          cd ..
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-${{ needs.version-check.outputs.version }}
+          path: |
+            dist/
+            .build-metadata/
+          retention-days: 90
+
+      - name: Upload to release assets (if release)
+        if: needs.version-check.outputs.is_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          tag_name: v${{ needs.version-check.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==============================================================================
+  # JOB 3: Test Package Installation
+  # ==============================================================================
+  test-package:
+    name: "Test Package Installation"
+    runs-on: ${{ matrix.os }}
+    needs: [version-check, build-package]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.12"]
+    
+    steps:
+      - name: Checkout code (for tests)
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-${{ needs.version-check.outputs.version }}
+          path: dist/
+
+      - name: Install package from wheel
+        run: |
+          WHEEL_FILE=$(ls dist/dist/*.whl)
+          echo "📦 Installing: $WHEEL_FILE"
+          pip install "$WHEEL_FILE"
+          echo "✅ Package installed"
+
+      - name: Verify package import
+        run: |
+          python -c "import sentinel_mas; print(f'✅ sentinel_mas imported successfully')"
+          python -c "from sentinel_mas.agents import crew; print(f'✅ sentinel_mas.agents.crew imported')"
+          python -c "from sentinel_mas.policy_sentinel import audit; print(f'✅ sentinel_mas.policy_sentinel imported')"
+
+      - name: Check package version
+        run: |
+          python -c "import sentinel_mas; import pkg_resources; version = pkg_resources.get_distribution('sentinel-mas').version; print(f'📦 Installed version: {version}')"
+
+      - name: Run basic smoke tests
+        run: |
+          # Test that basic functionality works
+          python -c "
+          from sentinel_mas.config import settings
+          print('✅ Config loaded')
+          "
+
+      - name: Test package uninstall
+        run: |
+          pip uninstall -y sentinel-mas
+          echo "✅ Package uninstalled successfully"
+
+  # ==============================================================================
+  # JOB 4: Publish to PyPI (Release Only)
+  # ==============================================================================
+  publish-pypi:
+    name: "Publish to PyPI"
+    runs-on: ubuntu-latest
+    needs: [version-check, build-package, test-package]
+    if: needs.version-check.outputs.is_release == 'true'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sentinel-mas
+    permissions:
+      id-token: write  # For trusted publishing
+    
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-${{ needs.version-check.outputs.version }}
+          path: dist/
+
+      - name: Move packages to correct location
+        run: |
+          mv dist/dist/* .
+          rm -rf dist/dist
+          ls -lh
+
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ./
+          skip-existing: true
+          verbose: true
+
+      - name: Create PyPI link comment
+        if: github.event_name == 'release'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.version-check.outputs.version }}';
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: `📦 **Package Published to PyPI**\n\n` +
+                    `Version: \`${version}\`\n` +
+                    `Install with: \`pip install sentinel-mas==${version}\`\n\n` +
+                    `[View on PyPI](https://pypi.org/project/sentinel-mas/${version}/)`
+            });
+
+  # ==============================================================================
+  # JOB 5: Publish to Test PyPI (Development)
+  # ==============================================================================
+  publish-test-pypi:
+    name: "Publish to Test PyPI"
+    runs-on: ubuntu-latest
+    needs: [version-check, build-package, test-package]
+    if: needs.version-check.outputs.is_release == 'false' && github.ref == 'refs/heads/main'
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/p/sentinel-mas
+    permissions:
+      id-token: write
+    
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-${{ needs.version-check.outputs.version }}
+          path: dist/
+
+      - name: Move packages to correct location
+        run: |
+          mv dist/dist/* .
+          rm -rf dist/dist
+          ls -lh
+
+      - name: Publish to Test PyPI (Optional)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        continue-on-error: true
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: ./
+          skip-existing: true
+          verbose: true
+
+  # ==============================================================================
+  # JOB 6: Generate Release Notes
+  # ==============================================================================
+  release-notes:
+    name: "Generate Release Notes"
+    runs-on: ubuntu-latest
+    needs: [version-check, build-package]
+    if: needs.version-check.outputs.is_release == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-${{ needs.version-check.outputs.version }}
+          path: dist/
+
+      - name: Generate changelog
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          echo "# Release Notes - v${VERSION}" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## 📦 Installation" >> RELEASE_NOTES.md
+          echo '```bash' >> RELEASE_NOTES.md
+          echo "pip install sentinel-mas==${VERSION}" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          if [ ! -z "$PREV_TAG" ]; then
+            echo "## 📝 Changes since ${PREV_TAG}" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges >> RELEASE_NOTES.md
+          fi
+          
+          echo "" >> RELEASE_NOTES.md
+          echo "## 📊 Package Details" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "**Files:**" >> RELEASE_NOTES.md
+          ls -lh dist/dist/*.{whl,tar.gz} | awk '{print "- " $9 " (" $5 ")"}' >> RELEASE_NOTES.md
+          
+          echo "" >> RELEASE_NOTES.md
+          echo "**Checksums:**" >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+          cat dist/dist/SHA256SUMS >> RELEASE_NOTES.md
+          echo '```' >> RELEASE_NOTES.md
+          
+          cat RELEASE_NOTES.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: RELEASE_NOTES.md
+          retention-days: 90
+
+  # ==============================================================================
+  # JOB 7: Status Summary
+  # ==============================================================================
+  package-status:
+    name: "Package Build Status"
+    runs-on: ubuntu-latest
+    needs: [version-check, build-package, test-package]
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📦 Package Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version Check | ${{ needs.version-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Package Build | ${{ needs.build-package.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Package Test | ${{ needs.test-package.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.version-check.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Type:** ${{ needs.version-check.outputs.is_release == 'true' && 'Release' || 'Development' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Publish Target:** ${{ needs.version-check.outputs.should_publish }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.build-package.result }}" == "success" ]] && [[ "${{ needs.test-package.result }}" == "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Package build completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📥 Download artifact: \`python-package-${{ needs.version-check.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Package build failed. Check job logs for details.**" >> $GITHUB_STEP_SUMMARY
+          fi
