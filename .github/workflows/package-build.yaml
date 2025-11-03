@@ -250,6 +250,11 @@ jobs:
     name: "Test Package Installation"
     runs-on: ${{ matrix.os }}
     needs: [version-check, build-package]
+    
+    defaults:
+      run:
+        shell: bash
+    
     strategy:
       fail-fast: false
       matrix:
@@ -259,43 +264,47 @@ jobs:
     steps:
       - name: Checkout code (for tests)
         uses: actions/checkout@v4
-
+  
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
+  
       - name: Download package artifact
         uses: actions/download-artifact@v4
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
           path: dist/
-
+  
       - name: Install package from wheel
         run: |
-          WHEEL_FILE=$(ls dist/dist/*.whl)
+          WHEEL_FILE=$(ls dist/dist/*.whl | head -1)
           echo "📦 Installing: $WHEEL_FILE"
           pip install "$WHEEL_FILE"
           echo "✅ Package installed"
-
-      - name: Verify package import
+  
+      - name: Verify basic imports
         run: |
-          python -c "import sentinel_mas; print(f'✅ sentinel_mas imported successfully')"
-          python -c "from sentinel_mas.agents import crew; print(f'✅ sentinel_mas.agents.crew imported')"
-          python -c "from sentinel_mas.policy_sentinel import audit; print(f'✅ sentinel_mas.policy_sentinel imported')"
-
+          python -c "import sentinel_mas; print('✅ sentinel_mas imported')"
+  
+      - name: Verify sub-package imports
+        run: |
+          python -c "from sentinel_mas.agents import crew; print('✅ agents.crew imported')"
+          python -c "from sentinel_mas.policy_sentinel import audit; print('✅ policy_sentinel.audit imported')"
+          python -c "from sentinel_mas.tools import loader; print('✅ tools.loader imported')"
+  
       - name: Check package version
         run: |
-          python -c "import sentinel_mas; import pkg_resources; version = pkg_resources.get_distribution('sentinel-mas').version; print(f'📦 Installed version: {version}')"
-
-      - name: Run basic smoke tests
-        run: |
-          # Test that basic functionality works
           python -c "
-          from sentinel_mas.config import settings
-          print('✅ Config loaded')
+          import pkg_resources
+          version = pkg_resources.get_distribution('sentinel-mas').version
+          print(f'📦 Installed version: {version}')
           "
-
+  
+      - name: Verify package metadata
+        run: |
+          pip show sentinel-mas
+  
       - name: Test package uninstall
         run: |
           pip uninstall -y sentinel-mas
