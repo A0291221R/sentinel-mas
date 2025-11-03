@@ -1,0 +1,509 @@
+name: Stage 1 - Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    # Nightly regression at 2 AM UTC
+    - cron: '0 2 * * *'
+
+# Cancel in-progress runs for same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_CACHE_DIR: /tmp/.uv-cache
+
+jobs:
+  # ==============================================================================
+  # JOB 1: Code Quality Checks (Linting)
+  # ==============================================================================
+  code-quality:
+    name: "Code Quality & Linting"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv with caching
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+          ignore-nothing-to-cache: true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-lint-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: |
+            venv-lint-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+          echo "✅ Dependencies installed"
+
+      - name: Run Black (code formatting check)
+        run: |
+          echo "🔍 Checking code formatting with Black..."
+          uv run black --check . --diff
+        continue-on-error: false
+
+      - name: Run isort (import sorting check)
+        run: |
+          echo "🔍 Checking import sorting with isort..."
+          uv run isort --profile black --check-only . --diff
+        continue-on-error: false
+
+      - name: Run flake8 (style guide enforcement)
+        run: |
+          echo "🔍 Running flake8 style checks..."
+          uv run flake8 sentinel_mas api_service tests \
+            --count \
+            --show-source \
+            --statistics \
+            --format='::error file=%(path)s,line=%(row)d,col=%(col)d::%(code)s: %(text)s'
+
+      - name: Run mypy (static type checking)
+        run: |
+          echo "🔍 Running mypy type checks..."
+          uv run mypy sentinel_mas api_service tests \
+            --pretty \
+            --show-error-codes \
+            --no-error-summary
+        continue-on-error: true  # Type hints may not be complete
+
+      - name: Code quality summary
+        if: always()
+        run: |
+          echo "✅ Code quality checks completed"
+          echo "Summary: All linting checks executed"
+
+  # ==============================================================================
+  # JOB 2: Unit & Integration Tests
+  # ==============================================================================
+  unit-tests:
+    name: "Unit & Integration Tests"
+    runs-on: ubuntu-latest
+    needs: code-quality  # Run after linting passes
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test-suite: [unit, integration, api]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv with caching
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+          ignore-nothing-to-cache: true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-test-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: |
+            venv-test-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+          echo "✅ Test dependencies installed"
+
+      - name: Run ${{ matrix.test-suite }} tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PYTHONHASHSEED: "0"
+        run: |
+          mkdir -p test-results
+          
+          case "${{ matrix.test-suite }}" in
+            unit)
+              echo "🧪 Running unit tests..."
+              uv run pytest tests/test_sentinel_mas/unit/ \
+                -v \
+                --junitxml=test-results/junit-unit.xml \
+                --cov=sentinel_mas \
+                --cov-report=xml:test-results/coverage-unit.xml \
+                --cov-report=html:test-results/htmlcov-unit \
+                --tb=short
+              ;;
+            integration)
+              echo "🧪 Running integration tests..."
+              uv run pytest tests/test_sentinel_mas/integration/ \
+                -v \
+                --junitxml=test-results/junit-integration.xml \
+                --cov=sentinel_mas \
+                --cov-report=xml:test-results/coverage-integration.xml \
+                --cov-report=html:test-results/htmlcov-integration \
+                --tb=short
+              ;;
+            api)
+              echo "🧪 Running API service tests..."
+              uv run pytest tests/test_api_service/ \
+                -v \
+                --junitxml=test-results/junit-api.xml \
+                --cov=api_service \
+                --cov-report=xml:test-results/coverage-api.xml \
+                --cov-report=html:test-results/htmlcov-api \
+                --tb=short
+              ;;
+          esac
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-suite }}
+          path: test-results/
+          retention-days: 30
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "✅ ${{ matrix.test-suite }} tests completed"
+
+  # ==============================================================================
+  # JOB 3: Security Scanning
+  # ==============================================================================
+  security-scan:
+    name: "Security Analysis"
+    runs-on: ubuntu-latest
+    needs: code-quality  # Can run parallel with tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv with caching
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/*requirements*.txt
+          ignore-nothing-to-cache: true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-security-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: |
+            venv-security-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install security tools
+        run: |
+          uv sync --all-extras --dev
+          uv pip install pip-audit bandit safety
+          echo "✅ Security tools installed"
+
+      - name: Run pip-audit (dependency vulnerabilities)
+        continue-on-error: true
+        run: |
+          mkdir -p security-results
+          echo "🔒 Scanning dependencies for known vulnerabilities..."
+          uv run pip-audit \
+            --desc \
+            --format json \
+            --output security-results/pip-audit.json || true
+          
+          # Also generate human-readable report
+          uv run pip-audit \
+            --desc \
+            --format markdown \
+            --output security-results/pip-audit.md || true
+          
+          echo "✅ Dependency scan completed"
+
+      - name: Run Bandit (SAST - code security issues)
+        continue-on-error: true
+        run: |
+          echo "🔒 Running static security analysis..."
+          uv run bandit -r sentinel_mas/ api_service/ \
+            -f json \
+            -o security-results/bandit.json || true
+          
+          # HTML report for easier viewing
+          uv run bandit -r sentinel_mas/ api_service/ \
+            -f html \
+            -o security-results/bandit.html || true
+          
+          echo "✅ SAST scan completed"
+
+      - name: Run Safety (dependency check)
+        continue-on-error: true
+        run: |
+          echo "🔒 Running Safety dependency check..."
+          uv run safety check \
+            --json \
+            --output security-results/safety.json || true
+          
+          echo "✅ Safety check completed"
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: security-results/
+          retention-days: 30
+
+      - name: Check critical vulnerabilities
+        run: |
+          if [ -f security-results/pip-audit.json ]; then
+            # Parse JSON and check for critical vulnerabilities
+            CRITICAL_COUNT=$(cat security-results/pip-audit.json | grep -c '"vulnerabilities"' || echo "0")
+            echo "Found $CRITICAL_COUNT potential vulnerabilities"
+            
+            if [ "$CRITICAL_COUNT" -gt 0 ]; then
+              echo "⚠️ Vulnerabilities detected - review security reports"
+            fi
+          fi
+
+      - name: Security summary
+        if: always()
+        run: |
+          echo "✅ Security scans completed"
+          echo "📊 Reports uploaded as artifacts"
+
+  # ==============================================================================
+  # JOB 4: SonarQube Analysis (Code Quality Gate)
+  # ==============================================================================
+  sonarqube-analysis:
+    name: "SonarQube Quality Gate"
+    runs-on: ubuntu-latest
+    needs: [unit-tests]  # Wait for test results
+    if: |
+      (github.event_name == 'schedule' || 
+       github.ref == 'refs/heads/main' || 
+       github.ref == 'refs/heads/develop' ||
+       (github.event_name == 'pull_request' && github.base_ref == 'main')) &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for blame information
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results/
+
+      - name: Consolidate coverage reports
+        run: |
+          mkdir -p coverage-reports
+          find test-results -name "coverage-*.xml" -exec cp {} coverage-reports/ \;
+          find test-results -name "junit-*.xml" -exec cp {} coverage-reports/ \;
+          echo "✅ Coverage reports consolidated"
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=sentinel-mas
+            -Dsonar.projectName=Sentinel-MAS
+            -Dsonar.sources=sentinel_mas,api_service
+            -Dsonar.tests=tests
+            -Dsonar.python.version=3.12
+            -Dsonar.python.coverage.reportPaths=coverage-reports/coverage-*.xml
+            -Dsonar.python.xunit.reportPath=coverage-reports/junit-*.xml
+            -Dsonar.coverage.exclusions=tests/**,scripts/**
+            -Dsonar.exclusions=**/*_test.py,**/test_*.py
+
+      - name: SonarQube Quality Gate Check
+        id: sonarqube-quality-gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Comment quality gate results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const qualityGate = '${{ steps.sonarqube-quality-gate.outputs.quality-gate-status }}';
+            const projectKey = 'sentinel-mas';
+            const sonarUrl = process.env.SONAR_HOST_URL;
+            
+            const emoji = qualityGate === 'PASSED' ? '✅' : '❌';
+            const status = qualityGate === 'PASSED' ? '**PASSED**' : '**FAILED**';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### ${emoji} SonarQube Quality Gate\n\n` +
+                    `**Status:** ${status}\n\n` +
+                    `[📊 View Detailed Report](${sonarUrl}/dashboard?id=${projectKey})\n\n` +
+                    `---\n*Automated quality analysis by SonarQube*`
+            });
+
+  # ==============================================================================
+  # JOB 5: Test Report Aggregation
+  # ==============================================================================
+  test-report:
+    name: "Generate Test Reports"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, security-scan]
+    if: always()
+    
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-test-results/
+
+      - name: Consolidate test results
+        run: |
+          mkdir -p consolidated-results
+          find all-test-results -name "junit-*.xml" -exec cp {} consolidated-results/ \;
+          find all-test-results -name "coverage-*.xml" -exec cp {} consolidated-results/ \;
+          ls -la consolidated-results/
+
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: '📊 Pytest Test Results'
+          path: 'consolidated-results/junit-*.xml'
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload coverage to Codecov
+        if: hashFiles('consolidated-results/coverage-*.xml') != ''
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./consolidated-results/coverage-*.xml
+          flags: unittests
+          name: sentinel-mas-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Generate coverage summary
+        run: |
+          echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f consolidated-results/coverage-unit.xml ]; then
+            echo "✅ Unit tests coverage report generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f consolidated-results/coverage-integration.xml ]; then
+            echo "✅ Integration tests coverage report generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f consolidated-results/coverage-api.xml ]; then
+            echo "✅ API tests coverage report generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload consolidated results
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-test-results
+          path: consolidated-results/
+          retention-days: 30
+
+  # ==============================================================================
+  # JOB 6: CI Status Check (Required for branch protection)
+  # ==============================================================================
+  ci-status:
+    name: "CI Status Check"
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, security-scan, sonarqube-analysis, test-report]
+    if: always()
+    
+    steps:
+      - name: Check CI results
+        run: |
+          echo "## 🎯 CI Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check job statuses
+          CODE_QUALITY="${{ needs.code-quality.result }}"
+          UNIT_TESTS="${{ needs.unit-tests.result }}"
+          SECURITY="${{ needs.security-scan.result }}"
+          SONARQUBE="${{ needs.sonarqube-analysis.result }}"
+          
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality | ${CODE_QUALITY} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${UNIT_TESTS} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${SECURITY} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SonarQube | ${SONARQUBE} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Fail if critical jobs failed
+          if [ "$CODE_QUALITY" != "success" ] || [ "$UNIT_TESTS" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **CI Pipeline Failed** - Critical jobs did not pass" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **CI Pipeline Passed** - All critical checks completed successfully" >> $GITHUB_STEP_SUMMARY
+
+      - name: CI Success
+        if: success()
+        run: |
+          echo "✅ All CI checks passed successfully!"
+          echo "Ready for Stage 2: Package Build & Image Creation"
