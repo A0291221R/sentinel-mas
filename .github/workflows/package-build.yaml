@@ -6,9 +6,6 @@ on:
     paths:
       - 'sentinel_mas/**'
       - 'pyproject.toml'
-      - 'setup.py'
-      - 'setup.cfg'
-      - 'MANIFEST.in'
   release:
     types: [created, published]
   workflow_dispatch:
@@ -21,6 +18,7 @@ on:
 permissions:
   contents: write      # Required for creating releases
   id-token: write      # Required for PyPI trusted publishing
+  actions: read         # Required for downloading artifacts
 
 env:
   PYTHON_VERSION: "3.12"
@@ -116,7 +114,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}  # Use PAT for checkout
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -244,8 +242,7 @@ jobs:
             dist/SHA256SUMS
           tag_name: v${{ needs.version-check.outputs.version }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT here
   # ==============================================================================
   # JOB 3: Test Package Installation
   # ==============================================================================
