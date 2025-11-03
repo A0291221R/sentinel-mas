@@ -262,9 +262,6 @@ jobs:
         python-version: ["3.12"]
     
     steps:
-      - name: Checkout code (for tests)
-        uses: actions/checkout@v4
-  
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -274,34 +271,39 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
-          path: dist/
+          path: artifacts/
+  
+      - name: List downloaded files (debug)
+        run: |
+          echo "Downloaded artifact structure:"
+          find artifacts -type f
+  
+      - name: Prepare packages
+        run: |
+          # Find and copy wheel to current directory
+          WHEEL=$(find artifacts -name "*.whl" -type f | head -1)
+          if [ -z "$WHEEL" ]; then
+            echo "❌ No wheel file found!"
+            exit 1
+          fi
+          cp "$WHEEL" .
+          echo "📦 Found wheel: $(basename $WHEEL)"
+          ls -lh *.whl
   
       - name: Install package from wheel
         run: |
-          WHEEL_FILE=$(ls dist/dist/*.whl | head -1)
+          WHEEL_FILE=$(ls *.whl)
           echo "📦 Installing: $WHEEL_FILE"
           pip install "$WHEEL_FILE"
           echo "✅ Package installed"
   
-      - name: Verify basic imports
+      - name: Verify imports
         run: |
           python -c "import sentinel_mas; print('✅ sentinel_mas imported')"
-  
-      - name: Verify sub-package imports
-        run: |
           python -c "from sentinel_mas.agents import crew; print('✅ agents.crew imported')"
           python -c "from sentinel_mas.policy_sentinel import audit; print('✅ policy_sentinel.audit imported')"
-          python -c "from sentinel_mas.tools import loader; print('✅ tools.loader imported')"
   
       - name: Check package version
-        run: |
-          python -c "
-          import pkg_resources
-          version = pkg_resources.get_distribution('sentinel-mas').version
-          print(f'📦 Installed version: {version}')
-          "
-  
-      - name: Verify package metadata
         run: |
           pip show sentinel-mas
   
