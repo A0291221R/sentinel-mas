@@ -351,15 +351,15 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.projectKey=sentinel-mas
-            -Dsonar.projectName=Sentinel-MAS
-            -Dsonar.sources=sentinel_mas,api_service
-            -Dsonar.tests=tests
+            # -Dsonar.projectKey=sentinel-mas
+            # -Dsonar.projectName=Sentinel-MAS
+            # -Dsonar.sources=sentinel_mas,api_service
+            # -Dsonar.tests=tests
             -Dsonar.python.version=3.12
             -Dsonar.python.coverage.reportPaths=coverage-reports/coverage-*.xml
             -Dsonar.python.xunit.reportPath=coverage-reports/junit-*.xml
-            -Dsonar.coverage.exclusions=tests/**,scripts/**
-            -Dsonar.exclusions=**/*_test.py,**/test_*.py
+            # -Dsonar.coverage.exclusions=tests/**,scripts/**
+            # -Dsonar.exclusions=**/*_test.py,**/test_*.py
 
       - name: SonarQube Quality Gate Check
         id: sonarqube-quality-gate
