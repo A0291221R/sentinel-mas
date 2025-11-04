@@ -292,20 +292,20 @@ jobs:
 
       - name: Verify basic import
         run: |
-          python -c "import sentinel_mas; print('✅ sentinel_mas imported successfully')"
+          python -c "import sentinel_mas; print('sentinel_mas imported successfully')"
 
       - name: Verify sub-package imports
         run: |
-          python -c "from sentinel_mas.agents import crew; print('✅ sentinel_mas.agents.crew imported')"
-          python -c "from sentinel_mas.policy_sentinel import audit; print('✅ sentinel_mas.policy_sentinel.audit imported')"
-          python -c "from sentinel_mas.policy_sentinel import audit; print('✅ policy_sentinel.audit imported')"
+          python -c "from sentinel_mas.agents import crew; print('sentinel_mas.agents.crew imported')"
+          python -c "from sentinel_mas.policy_sentinel import audit; print('sentinel_mas.policy_sentinel.audit imported')"
+          python -c "from sentinel_mas.policy_sentinel import audit; print('policy_sentinel.audit imported')"
 
       - name: Check package version
         run: |
           python -c "
           import pkg_resources
           version = pkg_resources.get_distribution('sentinel-mas').version
-          print(f'📦 Installed version: {version}')
+          print(f'Installed version: {version}')
           "
 
       - name: Verify package metadata
@@ -320,13 +320,13 @@ jobs:
           from sentinel_mas import agents
           from sentinel_mas import policy_sentinel
           from sentinel_mas import tools
-          print('✅ All smoke tests passed')
+          print('All smoke tests passed')
           "
 
       - name: Test package uninstall
         run: |
           pip uninstall -y sentinel-mas
-          echo "✅ Package uninstalled successfully"
+          echo "Package uninstalled successfully"
 
   # ==============================================================================
   # JOB 4: Publish to PyPI (Release Only)
