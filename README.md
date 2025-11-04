@@ -184,3 +184,17 @@ services:
       - ./.env.api:/app/.env.api
       - ./.env.shared:/app/.env.shared
 ```
+
+
+### Create Release
+~~~bash
+# Update version in pyproject.toml
+# Edit: version = "0.1.0" → "0.1.1"
+
+# Create release
+git tag v0.1.1
+git push origin v0.1.1
+
+# Create GitHub release (UI or CLI)
+gh release create v0.1.1 --title "Release v0.1.1" --notes "Bug fixes and improvements"
+~~~

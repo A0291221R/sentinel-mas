@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, LogOut, History, Lightbulb, RefreshCw } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8001'; // Update with your Sentinel API URL
+const API_BASE_URL = 'http://localhost:8000'; // Update with your Sentinel API URL
 
 
 

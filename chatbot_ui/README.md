@@ -272,3 +272,5 @@ For issues related to:
 - **Chatbot UI**: Check this README and browser console
 - **API Connection**: Verify your Sentinel API is running correctly
 - **Authentication**: Ensure your JWT implementation matches expected format
+
+python -m http.server 8080

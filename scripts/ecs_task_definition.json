@@ -1,0 +1,20 @@
+{
+  "family": "sentinel-mas-api",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT:role/sentinel-mas-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/sentinel-mas-api:0.1.0",
+      "environment": [
+        {
+          "name": "ENVIRONMENT",
+          "value": "production"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
+        }
+      ]
+    }
+  ]
+}
