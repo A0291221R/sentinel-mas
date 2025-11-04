@@ -114,7 +114,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT_TOKEN }}  # Use PAT for checkout
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -135,7 +135,6 @@ jobs:
         run: |
           echo "📁 Verifying package structure..."
           
-          # Check required files
           if [ ! -f "pyproject.toml" ]; then
             echo "❌ pyproject.toml not found"
             exit 1
@@ -191,10 +190,6 @@ jobs:
         run: |
           echo "🔍 Verifying wheel contents..."
           
-          # Install wheel inspection tool
-          uv pip install --system check-wheel-contents
-          
-          # Check wheel
           WHEEL_FILE=$(ls dist/*.whl)
           echo "Inspecting: $WHEEL_FILE"
           
@@ -228,7 +223,9 @@ jobs:
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
           path: |
-            dist/
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
             .build-metadata/
           retention-days: 90
 
@@ -242,7 +239,8 @@ jobs:
             dist/SHA256SUMS
           tag_name: v${{ needs.version-check.outputs.version }}
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT here
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ==============================================================================
   # JOB 3: Test Package Installation
   # ==============================================================================
@@ -266,47 +264,65 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-  
+
       - name: Download package artifact
         uses: actions/download-artifact@v4
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
           path: artifacts/
-  
+
       - name: List downloaded files (debug)
         run: |
-          echo "Downloaded artifact structure:"
+          echo "📁 Downloaded artifact structure:"
           find artifacts -type f
-  
-      - name: Prepare packages
+
+      - name: Prepare and install package
         run: |
-          # Find and copy wheel to current directory
+          # Find wheel file
           WHEEL=$(find artifacts -name "*.whl" -type f | head -1)
           if [ -z "$WHEEL" ]; then
             echo "❌ No wheel file found!"
             exit 1
           fi
-          cp "$WHEEL" .
-          echo "📦 Found wheel: $(basename $WHEEL)"
-          ls -lh *.whl
-  
-      - name: Install package from wheel
-        run: |
-          WHEEL_FILE=$(ls *.whl)
-          echo "📦 Installing: $WHEEL_FILE"
-          pip install "$WHEEL_FILE"
+          
+          echo "📦 Found wheel: $WHEEL"
+          echo "📦 Installing package..."
+          pip install "$WHEEL"
           echo "✅ Package installed"
-  
-      - name: Verify imports
+
+      - name: Verify basic import
         run: |
-          python -c "import sentinel_mas; print('✅ sentinel_mas imported')"
-          python -c "from sentinel_mas.agents import crew; print('✅ agents.crew imported')"
+          python -c "import sentinel_mas; print('✅ sentinel_mas imported successfully')"
+
+      - name: Verify sub-package imports
+        run: |
+          python -c "from sentinel_mas.agents import crew; print('✅ sentinel_mas.agents.crew imported')"
+          python -c "from sentinel_mas.policy_sentinel import audit; print('✅ sentinel_mas.policy_sentinel.audit imported')"
           python -c "from sentinel_mas.policy_sentinel import audit; print('✅ policy_sentinel.audit imported')"
-  
+
       - name: Check package version
         run: |
+          python -c "
+          import pkg_resources
+          version = pkg_resources.get_distribution('sentinel-mas').version
+          print(f'📦 Installed version: {version}')
+          "
+
+      - name: Verify package metadata
+        run: |
           pip show sentinel-mas
-  
+
+      - name: Run basic smoke tests
+        run: |
+          python -c "
+          # Test main package structure
+          import sentinel_mas
+          from sentinel_mas import agents
+          from sentinel_mas import policy_sentinel
+          from sentinel_mas import tools
+          print('✅ All smoke tests passed')
+          "
+
       - name: Test package uninstall
         run: |
           pip uninstall -y sentinel-mas
@@ -324,20 +340,23 @@ jobs:
       name: pypi
       url: https://pypi.org/p/sentinel-mas
     permissions:
-      id-token: write  # For trusted publishing
+      id-token: write
+      contents: write
     
     steps:
       - name: Download package artifact
         uses: actions/download-artifact@v4
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
-          path: dist/
+          path: artifacts/
 
-      - name: Move packages to correct location
+      - name: Prepare packages for publishing
         run: |
-          mv dist/dist/* .
-          rm -rf dist/dist
-          ls -lh
+          # Copy distributable files to current directory
+          find artifacts -name "*.whl" -exec cp {} . \;
+          find artifacts -name "*.tar.gz" -exec cp {} . \;
+          echo "📦 Files prepared for publishing:"
+          ls -lh *.whl *.tar.gz
 
       - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -381,13 +400,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
-          path: dist/
+          path: artifacts/
 
-      - name: Move packages to correct location
+      - name: Prepare packages for publishing
         run: |
-          mv dist/dist/* .
-          rm -rf dist/dist
-          ls -lh
+          find artifacts -name "*.whl" -exec cp {} . \;
+          find artifacts -name "*.tar.gz" -exec cp {} . \;
+          ls -lh *.whl *.tar.gz
 
       - name: Publish to Test PyPI (Optional)
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -417,7 +436,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-package-${{ needs.version-check.outputs.version }}
-          path: dist/
+          path: artifacts/
 
       - name: Generate changelog
         run: |
@@ -444,12 +463,17 @@ jobs:
           echo "## 📊 Package Details" >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo "**Files:**" >> RELEASE_NOTES.md
-          ls -lh dist/dist/*.{whl,tar.gz} | awk '{print "- " $9 " (" $5 ")"}' >> RELEASE_NOTES.md
+          find artifacts -name "*.whl" -o -name "*.tar.gz" | while read file; do
+            SIZE=$(du -h "$file" | cut -f1)
+            echo "- $(basename $file) ($SIZE)" >> RELEASE_NOTES.md
+          done
           
           echo "" >> RELEASE_NOTES.md
           echo "**Checksums:**" >> RELEASE_NOTES.md
           echo '```' >> RELEASE_NOTES.md
-          cat dist/dist/SHA256SUMS >> RELEASE_NOTES.md
+          if [ -f artifacts/SHA256SUMS ]; then
+            cat artifacts/SHA256SUMS >> RELEASE_NOTES.md
+          fi
           echo '```' >> RELEASE_NOTES.md
           
           cat RELEASE_NOTES.md
