@@ -30,6 +30,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Verify files exist
+        run: |
+          ls -la api_service/
+          test -f api_service/Dockerfile && echo "✅ Dockerfile found" || exit 1
+          test -f api_service/docker-entrypoint.sh && echo "✅ Entrypoint found" || exit 1
+          test -f api_service/requirements-api.txt && echo "✅ Requirements found" || exit 1
       
       - name: Set up Python
         uses: actions/setup-python@v5
