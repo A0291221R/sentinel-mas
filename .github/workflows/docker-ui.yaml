@@ -76,7 +76,7 @@ jobs:
           IMAGE_TAG: ${{ steps.get_version.outputs.version }}
         run: |
           docker run -d --name test-ui -p 8080:80 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          sleep 5
+          sleep 10
           curl -f http://localhost:8080/health || exit 1
           docker stop test-ui
           docker rm test-ui
