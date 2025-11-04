@@ -1,0 +1,140 @@
+services:
+  # ==============================================================================
+  # Database - PostgreSQL with pgvector
+  # ==============================================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: sentinel-postgres
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sentinel_mas/data/pg_backup_18-oct-2025.sql:/docker-entrypoint-initdb.d/restore.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sentinel-network
+
+  # ==============================================================================
+  # pgAdmin - Database Management UI
+  # ==============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: sentinel-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@sentinel.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sentinel-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Message Queue - RabbitMQ (for sentinel_central)
+  # ==============================================================================
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
+  #   container_name: sentinel-rabbitmq
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: guest
+  #     RABBITMQ_DEFAULT_PASS: guest
+  #   ports:
+  #     - "5672:5672"   # AMQP
+  #     - "15672:15672" # Management UI
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmq-diagnostics", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - sentinel-network
+
+  # ==============================================================================
+  # Sentinel Central - Tracking Service
+  # ==============================================================================
+  sentinel-central:
+    build:
+      context: ./sentinel_central
+      dockerfile: Dockerfile
+    container_name: sentinel-central
+    command: uvicorn app.webapi_service:app --host 0.0.0.0 --port 8100  # Add this line
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # rabbitmq:
+      #   condition: service_healthy
+    ports:
+      - "8100:8100"
+    environment:
+      - SERVICE_NAME=centralized-server
+      - DB_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/sentinel
+      # - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    networks:
+      - sentinel-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # API Service - FastAPI Backend
+  # ==============================================================================
+  api:
+    image: sentinel-mas-api:test
+    container_name: sentinel-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sentinel-central:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sentinel
+      - API_PORT=8000
+      - SENTINEL_CENTRAL_URL=http://sentinel-central:8100
+    volumes:
+      - ./.env.sentinel:/app/.env.sentinel
+      - ./.env.shared:/app/.env.shared
+      - ./.env.api:/app/.env.api
+    networks:
+      - sentinel-network
+    restart: unless-stopped
+
+  # ==============================================================================
+  # UI Service - Nginx Static Frontend
+  # ==============================================================================
+  ui:
+    image: sentinel-mas-ui:test
+    container_name: sentinel-ui
+    depends_on:
+      - api
+      - sentinel-central
+    ports:
+      - "8080:80"
+    networks:
+      - sentinel-network
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
+  pgadmin-data:
+    driver: local
+
+networks:
+  sentinel-network:
+    driver: bridge

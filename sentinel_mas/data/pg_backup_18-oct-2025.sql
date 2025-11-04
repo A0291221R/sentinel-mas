@@ -2,7 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict NSvnoqTlAQ0kJm9fqzWLEu87jewYCrEGA3uFYSSm8pC3FY2d8yBffwV4f5zUjbi
 
 -- Dumped from database version 16.10 (Debian 16.10-1.pgdg12+1)
 -- Dumped by pg_dump version 16.10 (Debian 16.10-1.pgdg12+1)
@@ -2097,6 +2096,4 @@ ALTER TABLE ONLY public.track_resolution
 --
 -- PostgreSQL database dump complete
 --
-
-\unrestrict NSvnoqTlAQ0kJm9fqzWLEu87jewYCrEGA3uFYSSm8pC3FY2d8yBffwV4f5zUjbi
 
