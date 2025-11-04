@@ -7,7 +7,7 @@ ARG SENTINEL_VERSION=0.1.0
 RUN pip install --no-cache-dir sentinel-mas==${SENTINEL_VERSION}
 
 # Install API dependencies
-COPY requirements-api.txt .
+COPY api_service/requirements-api.txt .
 RUN pip install --no-cache-dir -r requirements-api.txt
 
 # Install boto3 for AWS SSM
