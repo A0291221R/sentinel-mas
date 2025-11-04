@@ -75,8 +75,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.get_version.outputs.version }}
         run: |
-          cd api_service
           docker build \
+            -f api_service/Dockerfile \
             --build-arg SENTINEL_VERSION=${{ steps.get_version.outputs.version }} \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
@@ -106,18 +106,19 @@ jobs:
           docker rm test-api
           
           echo "✅ Image test passed"
-      
-      - name: Scan image for vulnerabilities
-        continue-on-error: true
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.get_version.outputs.version }}
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy image \
-            --severity HIGH,CRITICAL \
-            --exit-code 0 \
-            $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # insufficient space
+      # - name: Scan image for vulnerabilities
+      #   continue-on-error: true
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     IMAGE_TAG: ${{ steps.get_version.outputs.version }}
+      #   run: |
+      #     docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+      #       aquasec/trivy image \
+      #       --severity HIGH,CRITICAL \
+      #       --exit-code 0 \
+      #       $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
       
       - name: Push to ECR
         env:
