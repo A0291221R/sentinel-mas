@@ -92,6 +92,17 @@ where = ["."]
 include = ["sentinel_mas*"]
 exclude = ["ui_app*", "images*", "scripts*", "notebooks*", "tests*", "docs*"]
 
+[tool.setuptools.package-data]
+sentinel_mas = [
+    "*.yaml",
+    "*.yml",
+    "**/*.yaml",
+    "**/*.yml",
+    "policy_sentinel/configs/*.yml",
+    "prompts/*.yaml",
+    "data/**/*"
+]
+
 
 [tool.black]
 line-length = 88
