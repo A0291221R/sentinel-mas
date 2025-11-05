@@ -83,6 +83,10 @@ jobs:
       #     echo "✅ Image test passed"
       - name: Test image locally
         run: |
+          echo "ECR_REGISTRY=${ECR_REGISTRY}"
+          echo "ECR_REPOSITORY=${ECR_REPOSITORY}"
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          
           # Run container
           docker run -d --name test-ui -p 8080:80 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
