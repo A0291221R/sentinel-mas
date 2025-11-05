@@ -3,8 +3,21 @@ name: Stage 1 - Continuous Integration
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'sentinel_mas/**'
+      - 'api_service/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '*requirements*.txt'
+      - '.github/workflows/ci.yaml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'sentinel_mas/**'
+      - 'api_service/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '*requirements*.txt'
   workflow_dispatch:  # Manual trigger
   schedule:
     # Nightly regression at 2 AM UTC
@@ -23,6 +36,8 @@ permissions:
 env:
   PYTHON_VERSION: "3.12"
   UV_CACHE_DIR: /tmp/.uv-cache
+  # Define paths to check (excludes sentinel_central and chatbot_ui)
+  CHECK_PATHS: "sentinel_mas api_service"
 
 jobs:
   # ==============================================================================
@@ -68,19 +83,22 @@ jobs:
       - name: Run Black (code formatting check)
         run: |
           echo "🔍 Checking code formatting with Black..."
-          uv run black --check . --diff
+          echo "Checking: ${{ env.CHECK_PATHS }}"
+          uv run black --check ${{ env.CHECK_PATHS }} tests --diff
         continue-on-error: false
 
       - name: Run isort (import sorting check)
         run: |
           echo "🔍 Checking import sorting with isort..."
-          uv run isort --profile black --check-only . --diff
+          echo "Checking: ${{ env.CHECK_PATHS }}"
+          uv run isort --profile black --check-only ${{ env.CHECK_PATHS }} tests --diff
         continue-on-error: false
 
       - name: Run flake8 (style guide enforcement)
         run: |
           echo "🔍 Running flake8 style checks..."
-          uv run flake8 sentinel_mas api_service tests \
+          echo "Checking: ${{ env.CHECK_PATHS }}"
+          uv run flake8 ${{ env.CHECK_PATHS }} tests \
             --count \
             --show-source \
             --statistics \
@@ -89,7 +107,8 @@ jobs:
       - name: Run mypy (static type checking)
         run: |
           echo "🔍 Running mypy type checks..."
-          uv run mypy sentinel_mas api_service tests \
+          echo "Checking: ${{ env.CHECK_PATHS }}"
+          uv run mypy ${{ env.CHECK_PATHS }} tests \
             --pretty \
             --show-error-codes \
             --no-error-summary
@@ -98,8 +117,15 @@ jobs:
       - name: Code quality summary
         if: always()
         run: |
-          echo "✅ Code quality checks completed"
-          echo "Summary: All linting checks executed"
+          echo "## 🎯 Code Quality Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Checked paths:** \`${{ env.CHECK_PATHS }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Excluded from checks:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`sentinel_central/\` (external simulator)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`chatbot_ui/\` (frontend code)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All linting checks executed on core modules" >> $GITHUB_STEP_SUMMARY
 
   # ==============================================================================
   # JOB 2: Unit & Integration Tests
@@ -196,7 +222,11 @@ jobs:
       - name: Test summary
         if: always()
         run: |
-          echo "✅ ${{ matrix.test-suite }} tests completed"
+          echo "## 🧪 ${{ matrix.test-suite }} Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Tests completed for core modules only" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** \`sentinel_central\` tests are skipped (external simulator)" >> $GITHUB_STEP_SUMMARY
 
   # ==============================================================================
   # JOB 3: Security Scanning
@@ -243,6 +273,7 @@ jobs:
         run: |
           mkdir -p security-results
           echo "🔒 Scanning dependencies for known vulnerabilities..."
+          echo "Checking: sentinel_mas and api_service dependencies"
           uv run pip-audit \
             --desc \
             --format json \
@@ -260,12 +291,13 @@ jobs:
         continue-on-error: true
         run: |
           echo "🔒 Running static security analysis..."
-          uv run bandit -r sentinel_mas/ api_service/ \
+          echo "Scanning: ${{ env.CHECK_PATHS }}"
+          uv run bandit -r ${{ env.CHECK_PATHS }} \
             -f json \
             -o security-results/bandit.json || true
           
           # HTML report for easier viewing
-          uv run bandit -r sentinel_mas/ api_service/ \
+          uv run bandit -r ${{ env.CHECK_PATHS }} \
             -f html \
             -o security-results/bandit.html || true
           
@@ -304,8 +336,14 @@ jobs:
       - name: Security summary
         if: always()
         run: |
-          echo "✅ Security scans completed"
-          echo "📊 Reports uploaded as artifacts"
+          echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scanned modules:** \`${{ env.CHECK_PATHS }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Security scans completed" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Reports uploaded as artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** \`sentinel_central\` excluded from security scans" >> $GITHUB_STEP_SUMMARY
 
   # ==============================================================================
   # JOB 4: SonarQube Analysis (Code Quality Gate)
@@ -354,6 +392,8 @@ jobs:
             -Dsonar.python.version=3.12
             -Dsonar.python.coverage.reportPaths=coverage-reports/coverage-*.xml
             -Dsonar.python.xunit.reportPath=coverage-reports/junit-*.xml
+            -Dsonar.exclusions=sentinel_central/**,chatbot_ui/**
+            -Dsonar.coverage.exclusions=sentinel_central/**,chatbot_ui/**
 
       - name: SonarQube Quality Gate Check
         id: sonarqube-quality-gate
@@ -381,6 +421,8 @@ jobs:
               repo: context.repo.repo,
               body: `### ${emoji} SonarQube Quality Gate\n\n` +
                     `**Status:** ${status}\n\n` +
+                    `**Analyzed modules:** \`sentinel_mas\`, \`api_service\`\n` +
+                    `**Excluded:** \`sentinel_central\` (external simulator)\n\n` +
                     `[📊 View Detailed Report](${sonarUrl}/dashboard?id=${projectKey})\n\n` +
                     `---\n*Automated quality analysis by SonarQube*`
             });
@@ -438,6 +480,8 @@ jobs:
         run: |
           echo "## 📊 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Coverage scope:** Core modules only (\`sentinel_mas\`, \`api_service\`)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ -f consolidated-results/coverage-unit.xml ]; then
             echo "✅ Unit tests coverage report generated" >> $GITHUB_STEP_SUMMARY
@@ -450,6 +494,9 @@ jobs:
           if [ -f consolidated-results/coverage-api.xml ]; then
             echo "✅ API tests coverage report generated" >> $GITHUB_STEP_SUMMARY
           fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** \`sentinel_central\` excluded from coverage (external simulator)" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload consolidated results
         uses: actions/upload-artifact@v4
@@ -486,18 +533,22 @@ jobs:
           echo "| Security Scan | ${SECURITY} |" >> $GITHUB_STEP_SUMMARY
           echo "| SonarQube | ${SONARQUBE} |" >> $GITHUB_STEP_SUMMARY
           
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Checked modules:** \`sentinel_mas\`, \`api_service\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Excluded:** \`sentinel_central\` (external simulator), \`chatbot_ui\` (frontend)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           # Fail if critical jobs failed
           if [ "$CODE_QUALITY" != "success" ] || [ "$UNIT_TESTS" != "success" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "❌ **CI Pipeline Failed** - Critical jobs did not pass" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **CI Pipeline Passed** - All critical checks completed successfully" >> $GITHUB_STEP_SUMMARY
 
       - name: CI Success
         if: success()
         run: |
           echo "✅ All CI checks passed successfully!"
+          echo "Scope: sentinel_mas + api_service"
           echo "Ready for Stage 2: Package Build & Image Creation"
