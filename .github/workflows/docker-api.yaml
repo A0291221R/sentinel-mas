@@ -96,7 +96,7 @@ jobs:
             $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           
           # Wait for startup
-          sleep 10
+          sleep 30
           
           # Test health endpoint
           curl -f http://localhost:8000/health || exit 1
