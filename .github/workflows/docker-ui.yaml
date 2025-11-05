@@ -55,7 +55,7 @@ jobs:
           ls -la chatbot_ui/
           test -f chatbot_ui/index.html && echo "✅ index.html found" || exit 1
           test -f chatbot_ui/Dockerfile && echo "✅ Dockerfile found" || exit 1
-          test -f chatbot_ui/nginx.conf && echo "✅ nginx.conf found" || exit 1
+          test -f chatbot_ui/nginx.conf.template && echo "✅ nginx.conf.template found" || exit 1
       
       - name: Build Docker image
         env:
