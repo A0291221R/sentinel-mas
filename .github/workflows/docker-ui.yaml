@@ -75,7 +75,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.get_version.outputs.version }}
         run: |
-          docker run -d --name test-ui -p 8080:80 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker run -d --name test-ui \
+              -p 8080:80 \
+              -e API_URL=http://api:8000 \
+              -e TRACKING_API_URL=http://tracking:8100 \
+              $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+              
           sleep 10
           curl -f http://localhost:8080/health || exit 1
           docker stop test-ui
