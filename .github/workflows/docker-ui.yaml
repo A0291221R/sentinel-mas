@@ -70,63 +70,16 @@ jobs:
             chatbot_ui/
           echo "✅ Docker image built successfully"
       
-      # - name: Test image locally
-      #   env:
-      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      #     IMAGE_TAG: ${{ steps.get_version.outputs.version }}
-      #   run: |
-      #     docker run -d --name test-ui -p 8080:80 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-      #     sleep 10
-      #     curl -f http://localhost:8080/health || exit 1
-      #     docker stop test-ui
-      #     docker rm test-ui
-      #     echo "✅ Image test passed"
       - name: Test image locally
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.get_version.outputs.version }}
         run: |
-          echo "ECR_REGISTRY=${ECR_REGISTRY}"
-          echo "ECR_REPOSITORY=${ECR_REPOSITORY}"
-          echo "IMAGE_TAG=${IMAGE_TAG}"
-          
-          # Run container
           docker run -d --name test-ui -p 8080:80 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
           sleep 10
-          
-          # Debug information
-          echo "Container ID:"
-          docker ps -a | grep test-ui
-          
-          echo "Container logs:"
-          docker logs test-ui
-          
-          echo "Container inspect (networking):"
-          docker inspect test-ui | jq '.[0].NetworkSettings'
-          
-          echo "Check if port 8080 is in use:"
-          netstat -tlnp | grep 8080 || echo "Port 8080 not bound"
-          
-          echo "Try to access from inside container:"
-          docker exec test-ui curl -f http://localhost:80/health || echo "Internal health check failed"
-          
-          # Wait and retry
-          sleep 10
-          
-          echo "Attempting curl from host:"
-          curl -v http://localhost:8080/health || {
-            echo "Health check failed"
-            docker logs test-ui
-            docker stop test-ui
-            docker rm test-ui
-            exit 1
-          }
-          
-          # Cleanup
+          curl -f http://localhost:8080/health || exit 1
           docker stop test-ui
           docker rm test-ui
-          
           echo "✅ Image test passed"
 
       - name: Push to ECR
