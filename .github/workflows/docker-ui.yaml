@@ -82,6 +82,9 @@ jobs:
       #     docker rm test-ui
       #     echo "✅ Image test passed"
       - name: Test image locally
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.get_version.outputs.version }}
         run: |
           echo "ECR_REGISTRY=${ECR_REGISTRY}"
           echo "ECR_REPOSITORY=${ECR_REPOSITORY}"
