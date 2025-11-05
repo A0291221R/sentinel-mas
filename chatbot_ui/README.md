@@ -1,276 +1,243 @@
-# Sentinel Chatbot
+# Sentinel Frontend - Solution 3: Nginx Proxy Setup
 
-A modern chatbot interface with JWT authentication, query history, and categorized example prompts that connects to your Sentinel API service.
+This setup uses nginx as a reverse proxy to avoid hardcoding API URLs in the frontend code, which prevents SonarQube security violations.
 
-## Features
+## Architecture
 
-✅ **JWT Token Authentication** - Secure login system with token persistence
-✅ **Query History** - Automatically saves the last 20 queries with timestamps
-✅ **Example Prompts** - Organized into 3 categories:
-  - **SOP** - Standard Operating Procedures
-  - **Events** - Event-related queries
-  - **Tracking** - Status and progress tracking
-
-✅ **Clean UI** - Modern, responsive design with Tailwind CSS
-✅ **Real-time Chat** - Smooth messaging experience with loading indicators
-✅ **Session Management** - Automatic token storage and session handling
-
-## Files Included
-
-1. **chatbot.jsx** - React component (for integration into existing React apps)
-2. **chatbot.html** - Standalone HTML file (ready to use immediately)
-
-## Quick Start (HTML Version)
-
-### Prerequisites
-- Your Sentinel API service running (default: `http://localhost:8000`)
-- Valid user credentials for authentication
-
-### Setup
-
-1. **Update API URL** (if needed)
-   Open `chatbot.html` and find this line:
-   ```javascript
-   const API_BASE_URL = 'http://localhost:8000'; // Update with your Sentinel API URL
-   ```
-
-2. **Open in Browser**
-   Simply open `chatbot.html` in any modern web browser (Chrome, Firefox, Safari, Edge)
-
-3. **Login**
-   - Enter your username and password
-   - Click "Sign In"
-
-That's it! The chatbot is ready to use.
-
-## API Integration
-
-The chatbot expects your Sentinel API to have these endpoints:
-
-### 1. Login Endpoint
 ```
-POST /auth/login
-Content-Type: application/json
-
-Request Body:
-{
-  "username": "string",
-  "password": "string"
-}
-
-Response:
-{
-  "access_token": "string"
-}
+Browser → Nginx (port 80) → Backend API
+         ↓
+    Frontend Files
+    (index.html, etc.)
 ```
 
-### 2. Chat Endpoint
+- Frontend makes requests to `/api/*` (relative URLs)
+- Nginx proxies `/api/*` to the actual backend API URL
+- No hardcoded URLs in JavaScript code ✅
+- No SonarQube violations ✅
+
+## Files Overview
+
+1. **Dockerfile** - Builds the nginx container with template support
+2. **nginx.conf.template** - Nginx configuration with environment variable placeholders
+3. **index.html** - Updated to use relative API paths (`/api` instead of full URLs)
+4. **docker-compose.yml** - Example for local testing
+
+## Local Testing
+
+### Option 1: Using Docker Compose
+
+```bash
+# Update the API_URL in docker-compose.yml first
+docker-compose up --build
 ```
-POST /api/chat
-Content-Type: application/json
-Authorization: Bearer {token}
 
-Request Body:
-{
-  "message": "string"
-}
+### Option 2: Using Docker directly
 
-Response:
-{
-  "response": "string"
-  // OR
-  "message": "string"
-}
+```bash
+# Build the image
+docker build -t sentinel-frontend .
+
+# Run with environment variables
+docker run -p 80:80 \
+  -e API_URL=http://your-backend-api:8000 \
+  -e TRACKING_API_URL=http://sentinel-central:8100 \
+  sentinel-frontend
 ```
 
-## Using the React Component
+### Option 3: For local development
 
-If you want to integrate the chatbot into an existing React application:
+If testing locally and your API is on localhost:8000:
 
-### Installation
+```bash
+docker run -p 80:80 \
+  -e API_URL=http://host.docker.internal:8000 \
+  -e TRACKING_API_URL=http://host.docker.internal:8100 \
+  sentinel-frontend
+```
 
-1. Copy `chatbot.jsx` to your React project
-2. Install dependencies:
-   ```bash
-   npm install lucide-react
-   ```
+Then access at: http://localhost
 
-3. Import and use:
-   ```jsx
-   import SentinelChatbot from './chatbot';
+## AWS ECS Deployment
 
-   function App() {
-     return <SentinelChatbot />;
-   }
-   ```
+### 1. Build and Push to ECR
 
-### Requirements
-- React 18+
-- Tailwind CSS configured in your project
-- lucide-react for icons
+```bash
+# Authenticate to ECR
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
 
-## Customization
+# Build image
+docker build -t sentinel-frontend .
 
-### Change Example Prompts
+# Tag image
+docker tag sentinel-frontend:latest YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sentinel-frontend:latest
 
-Edit the `EXAMPLE_PROMPTS` object in the code:
+# Push to ECR
+docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sentinel-frontend:latest
+```
 
-```javascript
-const EXAMPLE_PROMPTS = {
-  sop: [
-    "Your custom SOP prompt 1",
-    "Your custom SOP prompt 2",
-    // Add more...
+### 2. Update ECS Task Definition
+
+In your ECS Task Definition JSON, add environment variables to the container definition:
+
+```json
+{
+  "family": "sentinel-mas-dev-frontend",
+  "containerDefinitions": [
+    {
+      "name": "sentinel-frontend",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sentinel-frontend:latest",
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "API_URL",
+          "value": "http://sentinel-mas-dev-api.internal:8000"
+        },
+        {
+          "name": "TRACKING_API_URL",
+          "value": "http://sentinel-central.internal:8100"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/sentinel-mas-dev-frontend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 10
+      }
+    }
   ],
-  events: [
-    "Your custom events prompt 1",
-    // Add more...
-  ],
-  tracking: [
-    "Your custom tracking prompt 1",
-    // Add more...
-  ]
-};
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "memory": "512",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/sentinel-mas-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole"
+}
 ```
 
-### Add More Categories
+### 3. Via AWS Console (Easier)
 
-Simply add a new key to the `EXAMPLE_PROMPTS` object:
+1. **Go to ECS Dashboard** → Task Definitions
+2. Select your task definition → **Create new revision**
+3. Scroll to **Container Definitions** → Click on your container
+4. Under **Environment variables**, add:
+   - Key: `API_URL`, Value: `http://your-backend-service:8000`
+   - Key: `TRACKING_API_URL`, Value: `http://sentinel-central:8100`
+5. Click **Update** → **Create**
 
-```javascript
-const EXAMPLE_PROMPTS = {
-  sop: [...],
-  events: [...],
-  tracking: [...],
-  reports: [  // New category
-    "Generate monthly report",
-    "Show quarterly statistics"
-  ]
-};
+### 4. Update ECS Service
+
+```bash
+aws ecs update-service \
+  --cluster sentinel-mas-dev \
+  --service sentinel-mas-dev-frontend \
+  --task-definition sentinel-mas-dev-frontend:NEW_REVISION \
+  --force-new-deployment
 ```
 
-### Change History Limit
+## Environment Variables
 
-Find this line and change `20` to your desired number:
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `API_URL` | Backend API endpoint | `http://api-service:8000` |
+| `TRACKING_API_URL` | Tracking service endpoint | `http://sentinel-central:8100` |
 
-```javascript
-].slice(0, 20); // Keep only last 20
-```
+**Note:** For ECS services within the same VPC:
+- Use service discovery names (e.g., `http://sentinel-mas-dev-api:8000`)
+- Or use internal ALB/NLB DNS names
+- Or use private IP addresses
 
-### Customize Colors
+## How It Works
 
-The chatbot uses Tailwind CSS classes. Key color classes to change:
+1. **Build Time:**
+   - Dockerfile copies `nginx.conf.template` to `/etc/nginx/templates/`
+   - No hardcoded URLs in the code
 
-- Primary color: `bg-indigo-600`, `text-indigo-600`, etc.
-- Change all `indigo` to another Tailwind color like `blue`, `purple`, `green`, etc.
+2. **Container Start:**
+   - Nginx reads environment variables (`API_URL`, `TRACKING_API_URL`)
+   - Automatically processes `.template` files and substitutes `${API_URL}` with actual values
+   - Creates final nginx config in `/etc/nginx/conf.d/`
 
-## Features Explained
+3. **Runtime:**
+   - User accesses frontend at `http://your-domain.com`
+   - JavaScript makes request to `/api/v1/queries`
+   - Nginx proxies to `${API_URL}/v1/queries`
+   - Response sent back to browser
 
-### Authentication
-- JWT token is stored in `localStorage`
-- Automatic session persistence (survives page refresh)
-- Auto-logout on token expiration (401 errors)
-- Secure logout clears all stored data
+## Benefits
 
-### Query History
-- Stores last 20 queries automatically
-- Includes query text, response preview, and timestamp
-- Persisted in `localStorage`
-- Click any history item to reuse the query
-
-### Example Prompts
-- 3 categories with 4 examples each
-- Click any example to populate the input field
-- Easy to customize and extend
-- Helps users discover chatbot capabilities
-
-### Message Interface
-- Real-time message display
-- Timestamps for all messages
-- Loading indicator during API calls
-- Error handling with clear error messages
-- Auto-scroll to latest message
+✅ **No SonarQube violations** - No hardcoded URLs in code
+✅ **Secure** - API URLs hidden from browser/frontend code
+✅ **Flexible** - Change backend URLs via environment variables
+✅ **CORS handling** - Nginx handles cross-origin requests
+✅ **Single domain** - Frontend and API appear on same origin
 
 ## Troubleshooting
 
-### "Failed to get response" Error
-- Check that your Sentinel API is running
-- Verify the API_BASE_URL is correct
-- Check browser console for CORS errors
-- Ensure your API endpoints match the expected format
+### Check if environment variables are set:
 
-### "Invalid credentials" Error
-- Verify username and password are correct
-- Check that `/auth/login` endpoint is working
-- Ensure API returns `access_token` in response
-
-### "Session expired" Error
-- JWT token has expired
-- Simply log in again
-- Consider implementing token refresh in your API
-
-### CORS Issues
-Your Sentinel API needs to allow CORS. Add these headers:
-```python
-# FastAPI example
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Or specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+```bash
+# Inside the container
+docker exec -it <container-id> env | grep API_URL
 ```
 
-## Browser Support
+### Check generated nginx config:
 
-- ✅ Chrome 90+
-- ✅ Firefox 88+
-- ✅ Safari 14+
-- ✅ Edge 90+
+```bash
+# Inside the container
+docker exec -it <container-id> cat /etc/nginx/conf.d/default.conf
+```
 
-## Data Storage
+### Test API proxy:
 
-The chatbot stores data in browser `localStorage`:
-- `sentinel_token` - JWT authentication token
-- `query_history` - Last 20 queries with metadata
+```bash
+# From your local machine
+curl http://localhost/api/health
+```
 
-To clear stored data:
-1. Logout (clears token and messages)
-2. Or manually: Open browser DevTools > Application > Local Storage > Clear
+### View nginx logs:
+
+```bash
+# ECS CloudWatch Logs
+aws logs tail /ecs/sentinel-mas-dev-frontend --follow
+
+# Docker logs
+docker logs <container-id>
+```
 
 ## Security Notes
 
-- JWT token stored in localStorage (consider httpOnly cookies for production)
-- Passwords never stored
-- All API calls use Authorization header
-- Token automatically removed on logout
-- Session expires on 401 response
+- API URLs are only visible in ECS Task Definition (infrastructure level)
+- Not exposed in frontend JavaScript code
+- Not visible in browser DevTools/Network tab
+- Can add additional nginx security headers if needed
 
-## Future Enhancements
+## Next Steps
 
-Consider adding:
-- [ ] Token refresh mechanism
-- [ ] Message markdown rendering
-- [ ] File upload support
-- [ ] Voice input
-- [ ] Export chat history
-- [ ] Dark mode
-- [ ] Multi-language support
-- [ ] Typing indicators
-- [ ] Message reactions
-
-## License
-
-This chatbot interface is provided as-is for use with your Sentinel API service.
+1. ✅ Update your ECS Task Definition with environment variables
+2. ✅ Rebuild and push Docker image to ECR
+3. ✅ Update ECS service to use new task definition revision
+4. ✅ Verify the application works correctly
+5. ✅ Run SonarQube scan to confirm no violations
 
 ## Support
 
-For issues related to:
-- **Chatbot UI**: Check this README and browser console
-- **API Connection**: Verify your Sentinel API is running correctly
-- **Authentication**: Ensure your JWT implementation matches expected format
-
-python -m http.server 8080
+If you encounter issues:
+1. Check nginx logs in CloudWatch
+2. Verify environment variables are set correctly in task definition
+3. Ensure backend services are reachable from the frontend container
+4. Check security groups allow traffic between services

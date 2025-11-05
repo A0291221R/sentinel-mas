@@ -153,3 +153,6 @@ Load balancing
 Auto-scaling
 Monitoring
 Logging
+
+
+docker build -f api_service/Dockerfile -t sentinel-mas-api:test --build-arg SENTINEL_VERSION=0.1.0 .

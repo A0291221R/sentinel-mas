@@ -92,6 +92,9 @@ services:
   # API Service - FastAPI Backend
   # ==============================================================================
   api:
+    # build:
+    #   context: ./api_service
+    #   dockerfile: Dockerfile
     image: sentinel-mas-api:test
     container_name: sentinel-api
     depends_on:
@@ -118,13 +121,21 @@ services:
   # UI Service - Nginx Static Frontend
   # ==============================================================================
   ui:
+    build:
+      context: ./chatbot_ui
+      dockerfile: Dockerfile
     image: sentinel-mas-ui:test
     container_name: sentinel-ui
     depends_on:
-      - api
-      - sentinel-central
+      api:
+        condition: service_started
+      sentinel-central:
+        condition: service_started
     ports:
       - "8080:80"
+    environment:
+      - API_URL=http://sentinel-api:8000
+      - TRACKING_API_URL=http://sentinel-central:8100
     networks:
       - sentinel-network
     restart: unless-stopped

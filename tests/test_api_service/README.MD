@@ -72,3 +72,21 @@ pytest tests/ -v --cov=sentinel_mas --cov=api_service --cov-report=html
 
 # Run bandit locally
 uv run bandit -r sentinel_mas/ api_service/
+
+
+# scope test
+export CHECK_PATHS="sentinel_mas api_service"
+uv run black --check $CHECK_PATHS tests --diff
+
+uv run isort --profile black --check-only $CHECK_PATHS tests --diff
+
+uv run flake8 $CHECK_PATHS tests    \
+    --count \
+    --show-source \
+    --statistics \
+    --format='::error file=%(path)s,line=%(row)d,col=%(col)d::%(code)s: %(text)s'
+
+uv run mypy $CHECK_PATHS tests \
+    --pretty \
+    --show-error-codes \
+    --no-error-summary

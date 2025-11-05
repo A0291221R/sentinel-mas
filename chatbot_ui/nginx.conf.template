@@ -14,6 +14,14 @@ server {
     gzip_min_length 1024;
     gzip_types text/plain text/css text/xml text/javascript application/javascript application/json;
     
+
+     # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+    
     # Main app
     location / {
         try_files $uri $uri/ /index.html;
@@ -26,14 +34,19 @@ server {
         add_header Cache-Control "public, immutable";
     }
     
-    # API proxy - use variable to allow resolver
+    # API proxy - use environment variable
     location /api/ {
-        set $backend "http://api:8000";
-        proxy_pass $backend/;
+        set $backend "${API_URL}";
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
         
         # Handle connection errors gracefully
         proxy_intercept_errors on;
@@ -42,12 +55,17 @@ server {
     
     # Tracking API proxy
     location /tracking/ {
-        set $backend "http://sentinel-central:8100";
-        proxy_pass $backend/;
+        set $backend "${TRACKING_API_URL}";
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
         
         proxy_intercept_errors on;
         error_page 502 503 504 = @api_unavailable;
@@ -59,10 +77,4 @@ server {
         add_header Content-Type application/json;
     }
     
-    # Health check endpoint
-    location /health {
-        access_log off;
-        return 200 "healthy\n";
-        add_header Content-Type text/plain;
-    }
 }

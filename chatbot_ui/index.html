@@ -15,8 +15,8 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const API_BASE_URL = 'http://localhost:8000'; // Update with your Sentinel API URL
-
+        // API requests are proxied through nginx - no need for external URL
+        const API_BASE_URL = '/api';
         
 
         function SentinelChatbot() {
@@ -84,7 +84,7 @@
                 setIsLoading(true);
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+                    const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -147,7 +147,7 @@
                 setShowExamples(false);
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/v1/queries`, {
+                    const response = await fetch(`${API_BASE_URL}/v1/queries`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

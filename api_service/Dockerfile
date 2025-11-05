@@ -26,3 +26,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD python -c "import os; import requests; requests.get(f'http://localhost:{os.getenv(\"API_PORT\", \"8000\")}/health')" || exit 1
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+CMD ["uvicorn", "api_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

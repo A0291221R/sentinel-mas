@@ -40,9 +40,48 @@ else
     echo "🔧 Using local development configuration"
     echo "⚠️  Make sure you have .env.api, .env.sentinel, and .env.shared files!"
     echo "⚠️  Copy from examples: cp .env.*.example .env.*"
+
+     # Check if required .env files exist
+    MISSING_FILES=()
+    
+    if [ ! -f ".env.api" ]; then
+        MISSING_FILES+=(".env.api")
+    fi
+    
+    if [ ! -f ".env.sentinel" ]; then
+        MISSING_FILES+=(".env.sentinel")
+    fi
+    
+    if [ ! -f ".env.shared" ]; then
+        MISSING_FILES+=(".env.shared")
+    fi
+    
+    if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+        echo "❌ ERROR: Missing required configuration files:"
+        for file in "${MISSING_FILES[@]}"; do
+            echo "   - $file"
+        done
+        echo ""
+        echo "⚠️  Please create these files or mount them as volumes"
+        echo "⚠️  Example: cp .env.*.example .env.*"
+        echo ""
+        exit 1
+    fi
+    
+    echo "✅ All configuration files found:"
+    echo "   - .env.api ($(wc -l < .env.api) lines)"
+    echo "   - .env.sentinel ($(wc -l < .env.sentinel) lines)"
+    echo "   - .env.shared ($(wc -l < .env.shared) lines)"
 fi
 
 echo "✅ Configuration ready"
 echo "🌐 Starting uvicorn..."
 
-exec "$@"
+# If no command provided, use default
+if [ $# -eq 0 ]; then
+    echo "🚀 Starting uvicorn with default command..."
+    exec uvicorn api_service.main:app --host 0.0.0.0 --port ${API_PORT:-8000}
+else
+    echo "🚀 Executing command: $@"
+    exec "$@"
+fi

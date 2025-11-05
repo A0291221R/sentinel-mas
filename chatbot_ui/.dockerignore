@@ -1,8 +1,30 @@
-node_modules/
-.git/
+# Git
+.git
 .gitignore
+
+# Documentation
 README.md
 *.md
-.env*
-.DS_Store
+
+# Docker
 Dockerfile
+docker-compose.yml
+.dockerignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (if any)
+node_modules
+npm-debug.log
