@@ -96,10 +96,28 @@ jobs:
             $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           
           # Wait for startup
-          sleep 30
+          sleep 15
+
+          # Check logs
+          echo "=== Container Logs ==="
+          docker logs test-api
+          
+          # Check if container is running
+          docker ps -a | grep test-api
           
           # Test health endpoint
-          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:8000/health || {
+            echo "Health check failed, showing logs:"
+            docker logs test-api
+            exit 1
+          }
+          
+          # Cleanup
+          docker stop test-api
+          docker rm test-api
+          
+          # # Test health endpoint
+          # curl -f http://localhost:8000/health || exit 1
           
           # Cleanup
           docker stop test-api
