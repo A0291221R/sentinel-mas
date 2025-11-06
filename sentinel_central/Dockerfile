@@ -2,20 +2,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies, uv, and add to PATH in one layer
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && mv /root/.cargo/bin/uv /usr/local/bin/uv
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first
 COPY requirements.txt .
-
-# Install Python dependencies with uv
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
