@@ -6,73 +6,58 @@ echo "🚀 Starting API service..."
 ENVIRONMENT=${ENVIRONMENT:-development}
 echo "📍 Environment: $ENVIRONMENT"
 
+# Function to fetch and export parameters from SSM
+fetch_ssm_config() {
+    local param_path=$1
+    local param_name=$2
+    
+    echo "📥 Fetching $param_name..."
+    
+    if aws sts get-caller-identity &>/dev/null; then
+        CONFIG=$(aws ssm get-parameter \
+            --name "$param_path" \
+            --with-decryption \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null)
+        
+        if [ $? -eq 0 ] && [ -n "$CONFIG" ]; then
+            # Export each key=value pair
+            while IFS='=' read -r key value; do
+                [ -n "$key" ] && export "$key=$value"
+            done <<< "$CONFIG"
+            echo "✅ Loaded $param_name"
+            return 0
+        else
+            echo "⚠️  Could not fetch $param_name"
+            return 1
+        fi
+    else
+        echo "⚠️  No AWS credentials for $param_name"
+        return 1
+    fi
+}
+
+
+
 if [ "$ENVIRONMENT" = "production" ] || [ "$ENVIRONMENT" = "staging" ]; then
     echo "🔐 Fetching configuration from AWS SSM Parameter Store..."
     
-    python3 << EOF
-import boto3
-import sys
+    # Fetch all three configs
+    fetch_ssm_config "/sentinel-mas/shared/config" "shared config"
+    fetch_ssm_config "/sentinel-mas/sentinel/config" "sentinel config"
+    fetch_ssm_config "/sentinel-mas/api/config" "api config"
 
-try:
-    ssm = boto3.client('ssm', region_name='${AWS_REGION:-us-east-1}')
+elif [ "$ENVIRONMENT" = "test" ]; then
+    echo "🧪 Test environment - using provided environment variables"
     
-    # Fetch and write all 3 config files to /app (working directory)
-    configs = {
-        '/sentinel-mas/api/config': '.env.api',
-        '/sentinel-mas/sentinel/config': '.env.sentinel',
-        '/sentinel-mas/shared/config': '.env.shared'
-    }
-    
-    for param_name, file_name in configs.items():
-        print(f"📥 Fetching {param_name}...")
-        response = ssm.get_parameter(Name=param_name, WithDecryption=True)
-        with open(file_name, 'w') as f:
-            f.write(response['Parameter']['Value'])
-        print(f"✅ {file_name} created")
-    
-except Exception as e:
-    print(f"❌ Error fetching secrets: {e}", file=sys.stderr)
-    sys.exit(1)
-EOF
-    
-    echo "✅ All configurations loaded from AWS SSM"
 else
-    echo "🔧 Using local development configuration"
-    echo "⚠️  Make sure you have .env.api, .env.sentinel, and .env.shared files!"
-    echo "⚠️  Copy from examples: cp .env.*.example .env.*"
+    echo "🔧 Development environment - checking for .env files"
 
-     # Check if required .env files exist
-    MISSING_FILES=()
-    
-    if [ ! -f ".env.api" ]; then
-        MISSING_FILES+=(".env.api")
-    fi
-    
-    if [ ! -f ".env.sentinel" ]; then
-        MISSING_FILES+=(".env.sentinel")
-    fi
-    
-    if [ ! -f ".env.shared" ]; then
-        MISSING_FILES+=(".env.shared")
-    fi
-    
-    if [ ${#MISSING_FILES[@]} -gt 0 ]; then
-        echo "❌ ERROR: Missing required configuration files:"
-        for file in "${MISSING_FILES[@]}"; do
-            echo "   - $file"
-        done
-        echo ""
-        echo "⚠️  Please create these files or mount them as volumes"
-        echo "⚠️  Example: cp .env.*.example .env.*"
-        echo ""
-        exit 1
-    fi
-    
-    echo "✅ All configuration files found:"
-    echo "   - .env.api ($(wc -l < .env.api) lines)"
-    echo "   - .env.sentinel ($(wc -l < .env.sentinel) lines)"
-    echo "   - .env.shared ($(wc -l < .env.shared) lines)"
-fi
+    # Load local .env files if they exist
+    [ -f .env.shared ] && source .env.shared && echo "✅ Loaded .env.shared"
+    [ -f .env.sentinel ] && source .env.sentinel && echo "✅ Loaded .env.sentinel"
+    [ -f .env.api ] && source .env.api && echo "✅ Loaded .env.api"
+
 
 echo "✅ Configuration ready"
 echo "🌐 Starting uvicorn..."
