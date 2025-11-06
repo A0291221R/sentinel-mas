@@ -1,3 +1,5 @@
+#!/bin/bash
+
 fetch_ssm_config() {
     local param_path=$1
     local param_name=$2
