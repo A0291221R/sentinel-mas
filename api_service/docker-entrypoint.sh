@@ -37,8 +37,6 @@ fetch_ssm_config() {
     fi
 }
 
-
-
 if [ "$ENVIRONMENT" = "production" ] || [ "$ENVIRONMENT" = "staging" ]; then
     echo "🔐 Fetching configuration from AWS SSM Parameter Store..."
     
@@ -57,7 +55,7 @@ else
     [ -f .env.shared ] && source .env.shared && echo "✅ Loaded .env.shared"
     [ -f .env.sentinel ] && source .env.sentinel && echo "✅ Loaded .env.sentinel"
     [ -f .env.api ] && source .env.api && echo "✅ Loaded .env.api"
-
+fi
 
 echo "✅ Configuration ready"
 echo "🌐 Starting uvicorn..."
