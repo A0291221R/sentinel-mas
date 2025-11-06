@@ -91,15 +91,33 @@ jobs:
         run: |
           # Test that image runs
            docker run -d --name test-api \
-              -e ENVIRONMENT=production \
-              -e DATABASE_URL=postgresql://test:test@localhost/test \
-              -e SECRET_KEY=test-secret \
-              -e API_HOST=0.0.0.0 \
-              -e API_PORT=8000 \
+              -e ENVIRONMENT=test \
+              -e LOG_LEVEL=INFO \
+              -e SECRET_KEY=4fe9ff3418619b23671e7d07ed7f737a024479fab63409d5422eb1a7c7ebba5f \
+              -e ALGORITHM=HS256 \
+              -e ACCESS_TOKEN_EXPIRE_MINUTES=30 \
+              -e HOST=0.0.0.0 \
+              -e PORT=8000 \
+              -e V1_PREFIX=/api/v1 \
+              -e DEBUG=false \
+              -e PROJECT_NAME="Sentinel MAS API" \
+              -e VERSION=1.0.0 \
+              -e ALLOWED_ORIGINS='["http://localhost:3000","http://localhost:8000"]' \
+              -e RATE_LIMIT_PER_MINUTE=60 \
+              -e OPENAI_MODEL=gpt-4o-mini \
+              -e OPENAI_API_KEY=mock-key-for-testing \
+              -e TAVILY_API_KEY=mock-key-for-testing \
+              -e ANTHROPIC_API_KEY=mock-key-for-testing \
+              -e SENTINEL_CENTRAL_URL=http://localhost:8100 \
+              -e SENTINEL_DB_URL=postgresql://test:test@localhost:5432/sentinel \
+              -e RECURSION_LIMIT=15 \
+              -e MAX_ITERATIONS=10 \
+              -e TIMEOUT=300 \
+              -e DATABASE_URL=postgresql://test:test@localhost:5432/sentinel \
               -p 8000:8000 \
               $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             
-          sleep 30
+          sleep 15
           docker logs test-api
           
           # Test health endpoint
