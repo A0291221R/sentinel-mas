@@ -7,12 +7,13 @@ from app.db.db import get_session
 from app.db.models import MovementORM, AdEventORM
 
 app = FastAPI()
+tracking = APIRouter(prefix="/tracking")
 # bus = None  # injected from main.py
 
 # ---------------------------
 # Existing endpoint (unchanged)
 # ---------------------------
-@app.get("/insight/{resolved_id}")
+@tracking.get("/insight/{resolved_id}")
 async def insight(resolved_id: str) -> Dict[str, Any]:
     async with get_session() as s:
         last_mv = (await s.execute(
@@ -65,7 +66,7 @@ def readyz():
     return {"ok": True}
 
 # (Optional) read status for UI
-@app.get("/person/{resolved_id}/tracking")
+@tracking.get("/person/{resolved_id}/tracking")
 async def get_tracking_status(resolved_id: str) -> Dict[str, Any]:
     async with get_session() as s:
         row = (await s.execute(
@@ -75,7 +76,7 @@ async def get_tracking_status(resolved_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="resolved_id not found")
     return {"resolved_id": resolved_id, "is_tracked": bool(row[0])}
 
-@app.post("/person/track")
+@tracking.post("/person/track")
 async def track_person(cmd: TrackCmd) -> Dict[str, Any]:
     async with get_session() as s:
         res = (await s.execute(
@@ -96,7 +97,7 @@ async def track_person(cmd: TrackCmd) -> Dict[str, Any]:
 
     return {"status": "ok", "resolved_id": cmd.resolved_id, "is_tracked": True}
 
-@app.post("/person/untrack")
+@tracking.post("/person/untrack")
 async def untrack_person(cmd: TrackCmd) -> Dict[str, Any]:
     async with get_session() as s:
         res = (await s.execute(
