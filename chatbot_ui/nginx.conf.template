@@ -2,7 +2,7 @@ server {
     listen 80;
     server_name _;
     
-    # Add resolver to handle dynamic hostnames
+    # let ECS/VPC DNS handle resolution
     resolver 127.0.0.11 valid=30s ipv6=off;
     
     root /usr/share/nginx/html;
