@@ -3,7 +3,7 @@ server {
     server_name _;
     
     # let ECS/VPC DNS handle resolution
-    resolver 127.0.0.11 valid=30s ipv6=off;
+    # resolver 127.0.0.11 valid=30s ipv6=off;
     
     root /usr/share/nginx/html;
     index index.html;
