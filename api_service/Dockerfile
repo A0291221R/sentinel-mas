@@ -3,7 +3,9 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # install curl so ECS healthCheck works
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG SENTINEL_VERSION=0.1.0
 RUN pip install --no-cache-dir sentinel-mas==${SENTINEL_VERSION}
