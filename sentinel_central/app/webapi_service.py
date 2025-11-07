@@ -116,3 +116,9 @@ async def untrack_person(cmd: TrackCmd) -> Dict[str, Any]:
     # if bus: await bus.publish("tracking.changed", {"resolved_id": cmd.resolved_id, "is_tracked": False})
 
     return {"status": "ok", "resolved_id": cmd.resolved_id, "is_tracked": False}
+
+# ---------------------------
+# Mount router
+# ---------------------------
+app.include_router(tracking)
+
