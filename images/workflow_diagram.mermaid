@@ -1,0 +1,139 @@
+graph TB
+    subgraph "TRIGGERS"
+        T1[Push to main/develop]
+        T2[Pull Request to main]
+        T3[Release Published]
+        T4[Manual Trigger]
+        T5[Nightly Schedule]
+    end
+
+    subgraph "STAGE 1: CI Pipeline"
+        direction TB
+        S1A[Code Quality & Linting]
+        S1B[Unit & Integration Tests]
+        S1C[Security Scan]
+        S1D[SonarQube Analysis]
+        S1E[Test Report Aggregation]
+        S1F[CI Status Check]
+        
+        S1A --> S1B
+        S1B --> S1D
+        S1B --> S1E
+        S1C --> S1E
+        S1D --> S1F
+        S1E --> S1F
+    end
+
+    subgraph "STAGE 2: Package Build"
+        direction TB
+        S2A[Version Management]
+        S2B[Build Python Package]
+        S2C[Test Package]
+        S2D{Is Release?}
+        S2E[Publish to PyPI]
+        S2F[Publish to Test PyPI]
+        S2G[Generate Release Notes]
+        
+        S2A --> S2B
+        S2B --> S2C
+        S2C --> S2D
+        S2D -->|Yes| S2E
+        S2D -->|No| S2F
+        S2D -->|Yes| S2G
+    end
+
+    subgraph "STAGE 3: API Docker"
+        direction TB
+        S3A[Checkout & Verify Files]
+        S3B[Get Version]
+        S3C[Configure AWS & ECR]
+        S3D[Build Docker Image]
+        S3E[Test Image Locally]
+        S3F[Push to ECR]
+        
+        S3A --> S3B
+        S3B --> S3C
+        S3C --> S3D
+        S3D --> S3E
+        S3E --> S3F
+    end
+
+    subgraph "STAGE 4: UI Docker"
+        direction TB
+        S4A[Checkout & Verify UI Files]
+        S4B[Get Version]
+        S4C[Configure AWS & ECR]
+        S4D[Build UI Docker Image]
+        S4E[Test UI Image]
+        S4F[Push to ECR]
+        
+        S4A --> S4B
+        S4B --> S4C
+        S4C --> S4D
+        S4D --> S4E
+        S4E --> S4F
+    end
+
+    subgraph "STAGE 4b: Central Docker"
+        direction TB
+        S4BA[Checkout & Verify Central Files]
+        S4BB[Get Version]
+        S4BC[Configure AWS & ECR]
+        S4BD[Build Central Docker Image]
+        S4BE[Test Central Image]
+        S4BF[Push to ECR]
+        
+        S4BA --> S4BB
+        S4BB --> S4BC
+        S4BC --> S4BD
+        S4BD --> S4BE
+        S4BE --> S4BF
+    end
+
+    subgraph "OUTPUTS"
+        O1[GitHub Artifacts]
+        O2[PyPI Package]
+        O3[ECR: sentinel-mas-api]
+        O4[ECR: sentinel-mas-ui]
+        O5[ECR: sentinel-mas-central]
+    end
+
+    T1 --> S1A
+    T2 --> S1A
+    T4 --> S1A
+    T5 --> S1A
+    
+    S1F -->|Success on main| S2A
+    T3 --> S2A
+    T4 --> S2A
+    
+    S2C --> O1
+    S2E --> O2
+    
+    S2C -->|Completed| S3A
+    T3 --> S3A
+    T4 --> S3A
+    
+    S3F --> O3
+    
+    S3F -->|Completed| S4A
+    S3F -->|Completed| S4BA
+    T3 --> S4A
+    T3 --> S4BA
+    
+    S4F --> O4
+    S4BF --> O5
+
+    classDef triggerStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef stage1Style fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef stage2Style fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef stage3Style fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef stage4Style fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef outputStyle fill:#fff9c4,stroke:#f57f17,stroke-width:3px
+    
+    class T1,T2,T3,T4,T5 triggerStyle
+    class S1A,S1B,S1C,S1D,S1E,S1F stage1Style
+    class S2A,S2B,S2C,S2D,S2E,S2F,S2G stage2Style
+    class S3A,S3B,S3C,S3D,S3E,S3F stage3Style
+    class S4A,S4B,S4C,S4D,S4E,S4F,S4BA,S4BB,S4BC,S4BD,S4BE,S4BF stage4Style
+    class O1,O2,O3,O4,O5 outputStyle
