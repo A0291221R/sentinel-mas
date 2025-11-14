@@ -35,7 +35,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   CLUSTER_NAME_DEV: sentinel-v2-dev-cluster
-  CLUSTER_NAME_PROD: sentinel-v2-dev-api-service
+  CLUSTER_NAME_PROD: your-prod-cluster
 
 jobs:
   prepare-deployment:
@@ -170,7 +170,7 @@ jobs:
         run: |
           chmod +x scripts/wait-for-deployment.sh
           ./scripts/wait-for-deployment.sh \
-            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }} \
+            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             ${{ steps.deployment.outputs.deployment-id }} \
             30
       
@@ -262,7 +262,7 @@ jobs:
         run: |
           chmod +x scripts/wait-for-deployment.sh
           ./scripts/wait-for-deployment.sh \
-            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }} \
+            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             ${{ steps.deployment.outputs.deployment-id }} \
             30
       
@@ -354,7 +354,7 @@ jobs:
         run: |
           chmod +x scripts/wait-for-deployment.sh
           ./scripts/wait-for-deployment.sh \
-            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }} \
+            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             ${{ steps.deployment.outputs.deployment-id }} \
             30
       
