@@ -36,3 +36,30 @@ aws ssm get-parameter \
   --name " /sentinel-mas/sentinel/config" \
   --with-decryption \
   --region $AWS_REGION
+
+
+# sentinel-mas-dev-ecs-task-ssm-policy 
+# {
+# 	"Version": "2012-10-17",
+# 	"Statement": [
+# 		{
+# 			"Action": [
+# 				"ssm:GetParameter",
+# 				"ssm:GetParameters",
+# 				"secretsmanager:GetSecretValue"
+# 			],
+# 			"Effect": "Allow",
+# 			"Resource": [
+# 				"arn:aws:ssm:us-east-1:590183890857:parameter/sentinel-mas/*",
+# 				"arn:aws:secretsmanager:us-east-1:590183890857:secret:sentinel-mas/*"
+# 			]
+# 		},
+# 		{
+# 			"Action": [
+# 				"kms:Decrypt"
+# 			],
+# 			"Effect": "Allow",
+# 			"Resource": "*"
+# 		}
+# 	]
+# }

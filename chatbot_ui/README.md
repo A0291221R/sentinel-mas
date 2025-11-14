@@ -144,8 +144,8 @@ In your ECS Task Definition JSON, add environment variables to the container def
 ```bash
 aws ecs update-service \
   --cluster sentinel-mas-dev \
-  --service sentinel-mas-dev-frontend \
-  --task-definition sentinel-mas-dev-frontend:NEW_REVISION \
+  --service sentinel-mas-dev-ui \
+  --task-definition sentinel-mas-dev-ui:NEW_REVISION \
   --force-new-deployment
 ```
 
