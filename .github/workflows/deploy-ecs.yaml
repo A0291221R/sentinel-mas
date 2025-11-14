@@ -2,7 +2,7 @@ name: Stage 5 - Deploy to ECS (Blue/Green with Canary)
 
 on:
   workflow_run:
-    workflows: ["Stage 4b - Central Docker Image"]
+    workflows: ["Stage 4b - Build Sentinel Central Docker Image"]
     types:
       - completed
     branches:
