@@ -1,0 +1,460 @@
+name: Stage 5 - Deploy to ECS (Blue/Green with Canary)
+
+on:
+  workflow_run:
+    workflows: ["Stage 4b - Central Docker Image"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      service:
+        description: 'Service to deploy (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - all
+          - api
+          - ui
+          - central
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME_DEV: sentinel-v2-dev-cluster
+  CLUSTER_NAME_PROD: sentinel-v2-dev-api-service
+
+jobs:
+  prepare-deployment:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      version: ${{ steps.get-version.outputs.version }}
+      cluster: ${{ steps.set-env.outputs.cluster }}
+      deploy-api: ${{ steps.determine-services.outputs.deploy-api }}
+      deploy-ui: ${{ steps.determine-services.outputs.deploy-ui }}
+      deploy-central: ${{ steps.determine-services.outputs.deploy-central }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENV="prod"
+          else
+            ENV="dev"
+          fi
+          
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          
+          if [[ "${ENV}" == "prod" ]]; then
+            echo "cluster=${{ env.CLUSTER_NAME_PROD }}" >> $GITHUB_OUTPUT
+          else
+            echo "cluster=${{ env.CLUSTER_NAME_DEV }}" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "🌍 Environment: ${ENV}"
+      
+      - name: Get version
+        id: get-version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Version: ${VERSION}"
+      
+      - name: Determine services to deploy
+        id: determine-services
+        run: |
+          if [[ "${{ github.event.inputs.service }}" == "all" ]] || [[ -z "${{ github.event.inputs.service }}" ]]; then
+            echo "deploy-api=true" >> $GITHUB_OUTPUT
+            echo "deploy-ui=true" >> $GITHUB_OUTPUT
+            echo "deploy-central=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy-api=${{ github.event.inputs.service == 'api' }}" >> $GITHUB_OUTPUT
+            echo "deploy-ui=${{ github.event.inputs.service == 'ui' }}" >> $GITHUB_OUTPUT
+            echo "deploy-central=${{ github.event.inputs.service == 'central' }}" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-api:
+    name: Deploy API Service
+    needs: prepare-deployment
+    runs-on: ubuntu-latest
+    if: needs.prepare-deployment.outputs.deploy-api == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api \
+            --query taskDefinition > task-definition.json
+          
+          # Remove fields that aren't needed for registration
+          cat task-definition.json | jq 'del(
+            .taskDefinitionArn,
+            .revision,
+            .status,
+            .requiresAttributes,
+            .compatibilities,
+            .registeredAt,
+            .registeredBy
+          )' > task-def-clean.json
+      
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-clean.json
+          container-name: api
+          image: ${{ steps.login-ecr.outputs.registry }}/sentinel-mas-api:${{ needs.prepare-deployment.outputs.version }}
+      
+      - name: Deploy with CodeDeploy (Blue/Green Canary)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-service
+          cluster: ${{ needs.prepare-deployment.outputs.cluster }}
+          wait-for-service-stability: false
+          codedeploy-appspec: terraform/environment/${{ needs.prepare-deployment.outputs.environment }}/appsecs/api-appspec.yml
+          codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
+          codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg
+          codedeploy-deployment-config: CodeDeployDefault.ECSCanary10Percent5Minutes
+      
+      - name: Get deployment ID
+        id: deployment
+        run: |
+          DEPLOYMENT_ID=$(aws deploy list-deployments \
+            --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
+            --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg \
+            --max-items 1 \
+            --query 'deployments[0]' \
+            --output text)
+          
+          echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "🚀 Deployment ID: ${DEPLOYMENT_ID}"
+      
+      - name: Monitor deployment
+        run: |
+          chmod +x scripts/wait-for-deployment.sh
+          ./scripts/wait-for-deployment.sh \
+            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }} \
+            ${{ steps.deployment.outputs.deployment-id }} \
+            30
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          STATUS=$(aws deploy get-deployment \
+            --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
+            --query 'deploymentInfo.status' \
+            --output text)
+          
+          echo "## 🚀 API Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.prepare-deployment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment ID:** ${{ steps.deployment.outputs.deployment-id }}" >> $GITHUB_STEP_SUMMARY
+
+  deploy-ui:
+    name: Deploy UI Service
+    needs: prepare-deployment
+    runs-on: ubuntu-latest
+    if: needs.prepare-deployment.outputs.deploy-ui == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui \
+            --query taskDefinition > task-definition.json
+          
+          cat task-definition.json | jq 'del(
+            .taskDefinitionArn,
+            .revision,
+            .status,
+            .requiresAttributes,
+            .compatibilities,
+            .registeredAt,
+            .registeredBy
+          )' > task-def-clean.json
+      
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-clean.json
+          container-name: ui
+          image: ${{ steps.login-ecr.outputs.registry }}/sentinel-mas-ui:${{ needs.prepare-deployment.outputs.version }}
+      
+      - name: Deploy with CodeDeploy (Blue/Green Canary)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-service
+          cluster: ${{ needs.prepare-deployment.outputs.cluster }}
+          wait-for-service-stability: false
+          codedeploy-appspec: terraform/environment/${{ needs.prepare-deployment.outputs.environment }}/appsecs/ui-appspec.yml
+          codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
+          codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-dg
+          codedeploy-deployment-config: CodeDeployDefault.ECSCanary10Percent5Minutes
+      
+      - name: Get deployment ID
+        id: deployment
+        run: |
+          DEPLOYMENT_ID=$(aws deploy list-deployments \
+            --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
+            --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-dg \
+            --max-items 1 \
+            --query 'deployments[0]' \
+            --output text)
+          
+          echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "🎨 Deployment ID: ${DEPLOYMENT_ID}"
+      
+      - name: Monitor deployment
+        run: |
+          chmod +x scripts/wait-for-deployment.sh
+          ./scripts/wait-for-deployment.sh \
+            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }} \
+            ${{ steps.deployment.outputs.deployment-id }} \
+            30
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          STATUS=$(aws deploy get-deployment \
+            --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
+            --query 'deploymentInfo.status' \
+            --output text)
+          
+          echo "## 🎨 UI Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.prepare-deployment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment ID:** ${{ steps.deployment.outputs.deployment-id }}" >> $GITHUB_STEP_SUMMARY
+
+  deploy-central:
+    name: Deploy Central Service
+    needs: prepare-deployment
+    runs-on: ubuntu-latest
+    if: needs.prepare-deployment.outputs.deploy-central == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central \
+            --query taskDefinition > task-definition.json
+          
+          cat task-definition.json | jq 'del(
+            .taskDefinitionArn,
+            .revision,
+            .status,
+            .requiresAttributes,
+            .compatibilities,
+            .registeredAt,
+            .registeredBy
+          )' > task-def-clean.json
+      
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def-clean.json
+          container-name: central
+          image: ${{ steps.login-ecr.outputs.registry }}/sentinel-mas-central:${{ needs.prepare-deployment.outputs.version }}
+      
+      - name: Deploy with CodeDeploy (Blue/Green Canary)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-service
+          cluster: ${{ needs.prepare-deployment.outputs.cluster }}
+          wait-for-service-stability: false
+          codedeploy-appspec: terraform/environment/${{ needs.prepare-deployment.outputs.environment }}/appsecs/central-appspec.yml
+          codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
+          codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-dg
+          codedeploy-deployment-config: CodeDeployDefault.ECSCanary10Percent5Minutes
+      
+      - name: Get deployment ID
+        id: deployment
+        run: |
+          DEPLOYMENT_ID=$(aws deploy list-deployments \
+            --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
+            --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-dg \
+            --max-items 1 \
+            --query 'deployments[0]' \
+            --output text)
+          
+          echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "📡 Deployment ID: ${DEPLOYMENT_ID}"
+      
+      - name: Monitor deployment
+        run: |
+          chmod +x scripts/wait-for-deployment.sh
+          ./scripts/wait-for-deployment.sh \
+            sentinel-v2-${{ needs.prepare-deployment.outputs.environment }} \
+            ${{ steps.deployment.outputs.deployment-id }} \
+            30
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          STATUS=$(aws deploy get-deployment \
+            --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
+            --query 'deploymentInfo.status' \
+            --output text)
+          
+          echo "## 📡 Central Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.prepare-deployment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment ID:** ${{ steps.deployment.outputs.deployment-id }}" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Send Notifications
+    needs: [prepare-deployment, deploy-api, deploy-ui, deploy-central]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Determine overall status
+        id: status
+        run: |
+          if [[ "${{ needs.deploy-api.result }}" == "failure" ]] || \
+             [[ "${{ needs.deploy-ui.result }}" == "failure" ]] || \
+             [[ "${{ needs.deploy-central.result }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.deploy-api.result }}" == "cancelled" ]] || \
+               [[ "${{ needs.deploy-ui.result }}" == "cancelled" ]] || \
+               [[ "${{ needs.deploy-central.result }}" == "cancelled" ]]; then
+            echo "status=cancelled" >> $GITHUB_OUTPUT
+            echo "emoji=⚠️" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Send Slack notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "${{ steps.status.outputs.emoji }} Sentinel MAS Deployment",
+              blocks: [
+                {
+                  type: "header",
+                  text: {
+                    type: "plain_text",
+                    text: "${{ steps.status.outputs.emoji }} Deployment ${{ steps.status.outputs.status }}"
+                  }
+                },
+                {
+                  type: "section",
+                  fields: [
+                    {
+                      type: "mrkdwn",
+                      text: "*Environment:*\n${{ needs.prepare-deployment.outputs.environment }}"
+                    },
+                    {
+                      type: "mrkdwn",
+                      text: "*Version:*\n${{ needs.prepare-deployment.outputs.version }}"
+                    },
+                    {
+                      type: "mrkdwn",
+                      text: "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      type: "mrkdwn",
+                      text: "*Triggered by:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: "*Service Status:*\n• API: ${{ needs.deploy-api.result }}\n• UI: ${{ needs.deploy-ui.result }}\n• Central: ${{ needs.deploy-central.result }}"
+                  }
+                },
+                {
+                  type: "actions",
+                  elements: [
+                    {
+                      type: "button",
+                      text: {
+                        type: "plain_text",
+                        text: "View Workflow"
+                      },
+                      url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

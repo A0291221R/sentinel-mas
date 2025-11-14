@@ -1,0 +1,34 @@
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: sentinel-v2-dev-ui
+        LoadBalancerInfo:
+          ContainerName: "ui"
+          ContainerPort: 80
+        PlatformVersion: "LATEST"
+        NetworkConfiguration:
+          AwsvpcConfiguration:
+            Subnets:
+              - subnet-02e57f4f82a7b6d89
+              - subnet-0f55da27c82840a3e
+            SecurityGroups:
+              - sg-0deda631db25d9dfa
+            AssignPublicIp: "ENABLED"
+
+Hooks:
+  # Pre-deployment validation
+  - BeforeInstall: "arn:aws:lambda:us-east-1:590183890857:function:codedeploy-before-install-hook"
+  
+  # After new tasks are created but before receiving traffic
+  - AfterInstall: "arn:aws:lambda:us-east-1:590183890857:function:codedeploy-after-install-hook"
+  
+  # After test traffic (10%) is routed
+  - AfterAllowTestTraffic: "arn:aws:lambda:us-east-1:590183890857:function:codedeploy-after-test-traffic-hook"
+  
+  # Before shifting all traffic to new deployment
+  - BeforeAllowTraffic: "arn:aws:lambda:us-east-1:590183890857:function:codedeploy-before-allow-traffic-hook"
+  
+  # After all traffic is shifted to new deployment
+  - AfterAllowTraffic: "arn:aws:lambda:us-east-1:590183890857:function:codedeploy-after-allow-traffic-hook"

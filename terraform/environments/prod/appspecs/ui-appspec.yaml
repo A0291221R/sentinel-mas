@@ -1,0 +1,34 @@
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: <TASK_DEFINITION>
+        LoadBalancerInfo:
+          ContainerName: "ui"
+          ContainerPort: 80
+        PlatformVersion: "LATEST"
+        NetworkConfiguration:
+          AwsvpcConfiguration:
+            Subnets:
+              - <SUBNET_1>
+              - <SUBNET_2>
+            SecurityGroups:
+              - <SECURITY_GROUP>
+            AssignPublicIp: "ENABLED"
+
+Hooks:
+  # Pre-deployment validation
+  - BeforeInstall: "Lambda_ValidateUiService"
+  
+  # After new tasks are created but before receiving traffic
+  - AfterInstall: "Lambda_HealthCheckNewTasks"
+  
+  # After test traffic (10%) is routed
+  - AfterAllowTestTraffic: "Lambda_ValidateTestTraffic"
+  
+  # Before shifting all traffic to new deployment
+  - BeforeAllowTraffic: "Lambda_PreProductionCheck"
+  
+  # After all traffic is shifted to new deployment
+  - AfterAllowTraffic: "Lambda_PostDeploymentValidation"
