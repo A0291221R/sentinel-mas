@@ -420,22 +420,13 @@ jobs:
           echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment ID:** ${DEPLOYMENT_ID}" >> $GITHUB_STEP_SUMMARY
 
-  notify:
+   notify:
     name: Send Notifications
     needs: [prepare-deployment, deploy-api, deploy-ui, deploy-central]
     runs-on: ubuntu-latest
     if: always()
     
     steps:
-      - name: Check if Slack webhook exists
-        id: check-slack
-        run: |
-          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
-            echo "webhook-exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "webhook-exists=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Determine overall status
         id: status
         run: |
@@ -455,8 +446,11 @@ jobs:
           fi
       
       - name: Send Slack notification
-        if: steps.check-slack.outputs.webhook-exists == 'true'
+        if: always()
+        continue-on-error: true
         uses: 8398a7/action-slack@v3
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         with:
           status: custom
           custom_payload: |
@@ -513,4 +507,3 @@ jobs:
                 }
               ]
             }
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
