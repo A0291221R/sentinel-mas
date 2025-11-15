@@ -299,7 +299,7 @@ resource "aws_ecs_service" "api" {
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [var.ecs_api_security_group_id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -310,8 +310,10 @@ resource "aws_ecs_service" "api" {
 
   lifecycle {
     ignore_changes = [
-      task_definition,
-      load_balancer
+      load_balancer,  # CodeDeploy switches between blue/green
+      # network_configuration,
+      # desired_count,
+      task_definition # CodeDeploy updates this during deployments
     ]
   }
 
@@ -338,7 +340,7 @@ resource "aws_ecs_service" "ui" {
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [var.ecs_ui_security_group_id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -349,8 +351,10 @@ resource "aws_ecs_service" "ui" {
 
   lifecycle {
     ignore_changes = [
-      task_definition,
-      load_balancer
+      load_balancer,  # CodeDeploy switches between blue/green
+      # network_configuration,
+      # desired_count,
+      task_definition # CodeDeploy updates this during deployments
     ]
   }
 
@@ -377,7 +381,7 @@ resource "aws_ecs_service" "central" {
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [var.ecs_central_security_group_id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -388,8 +392,10 @@ resource "aws_ecs_service" "central" {
 
   lifecycle {
     ignore_changes = [
-      task_definition,
-      load_balancer
+      load_balancer,  # CodeDeploy switches between blue/green
+      # network_configuration,
+      # desired_count,
+      task_definition # CodeDeploy updates this during deployments
     ]
   }
 
