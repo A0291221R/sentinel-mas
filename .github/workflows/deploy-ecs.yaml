@@ -148,7 +148,7 @@ jobs:
           service: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-service
           cluster: ${{ needs.prepare-deployment.outputs.cluster }}
           wait-for-service-stability: false
-          codedeploy-appspec: terraform/environments/${{ needs.prepare-deployment.outputs.environment }}/appsecs/api-appspec.yml
+          codedeploy-appspec: terraform/environments/${{ needs.prepare-deployment.outputs.environment }}/appspecs/api-appspec.yml
           codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
           codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg
       
@@ -257,7 +257,7 @@ jobs:
           service: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-service
           cluster: ${{ needs.prepare-deployment.outputs.cluster }}
           wait-for-service-stability: false
-          codedeploy-appspec: terraform/environments/${{ needs.prepare-deployment.outputs.environment }}/appsecs/ui-appspec.yml
+          codedeploy-appspec: terraform/environments/${{ needs.prepare-deployment.outputs.environment }}/appspecs/ui-appspec.yml
           codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
           codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-dg
       
@@ -365,7 +365,7 @@ jobs:
           service: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-service
           cluster: ${{ needs.prepare-deployment.outputs.cluster }}
           wait-for-service-stability: false
-          codedeploy-appspec: terraform/environments/${{ needs.prepare-deployment.outputs.environment }}/appsecs/central-appspec.yml
+          codedeploy-appspec: terraform/environments/${{ needs.prepare-deployment.outputs.environment }}/appspecs/central-appspec.yml
           codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
           codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-dg
       
