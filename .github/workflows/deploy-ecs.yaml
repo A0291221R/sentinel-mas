@@ -29,7 +29,6 @@ on:
           - central
 
 permissions:
-  id-token: write
   contents: read
 
 env:
@@ -109,7 +108,6 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
@@ -124,7 +122,6 @@ jobs:
             --task-definition sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api \
             --query taskDefinition > task-definition.json
           
-          # Remove fields that aren't needed for registration
           cat task-definition.json | jq 'del(
             .taskDefinitionArn,
             .revision,
@@ -144,6 +141,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/sentinel-mas-api:${{ needs.prepare-deployment.outputs.version }}
       
       - name: Deploy with CodeDeploy (Blue/Green Canary)
+        id: codedeploy
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
@@ -158,6 +156,9 @@ jobs:
       - name: Get deployment ID
         id: deployment
         run: |
+          # Wait for deployment to be registered
+          sleep 5
+          
           DEPLOYMENT_ID=$(aws deploy list-deployments \
             --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg \
@@ -165,10 +166,17 @@ jobs:
             --query 'deployments[0]' \
             --output text)
           
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ]; then
+            echo "❌ Failed to create deployment!"
+            echo "deployment-id=FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
           echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
           echo "🚀 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
+        if: steps.deployment.outputs.deployment-id != 'FAILED'
         run: |
           chmod +x scripts/wait-for-deployment.sh
           ./scripts/wait-for-deployment.sh \
@@ -179,17 +187,23 @@ jobs:
       - name: Deployment summary
         if: always()
         run: |
-          STATUS=$(aws deploy get-deployment \
-            --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
-            --query 'deploymentInfo.status' \
-            --output text)
+          if [ "${{ steps.deployment.outputs.deployment-id }}" == "FAILED" ]; then
+            STATUS="❌ Failed to create deployment"
+            DEPLOYMENT_ID="N/A"
+          else
+            STATUS=$(aws deploy get-deployment \
+              --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
+              --query 'deploymentInfo.status' \
+              --output text 2>/dev/null || echo "Unknown")
+            DEPLOYMENT_ID="${{ steps.deployment.outputs.deployment-id }}"
+          fi
           
           echo "## 🚀 API Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ needs.prepare-deployment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment ID:** ${{ steps.deployment.outputs.deployment-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment ID:** ${DEPLOYMENT_ID}" >> $GITHUB_STEP_SUMMARY
 
   deploy-ui:
     name: Deploy UI Service
@@ -204,7 +218,6 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
@@ -238,6 +251,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/sentinel-mas-ui:${{ needs.prepare-deployment.outputs.version }}
       
       - name: Deploy with CodeDeploy (Blue/Green Canary)
+        id: codedeploy
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
@@ -252,6 +266,8 @@ jobs:
       - name: Get deployment ID
         id: deployment
         run: |
+          sleep 5
+          
           DEPLOYMENT_ID=$(aws deploy list-deployments \
             --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-dg \
@@ -259,10 +275,17 @@ jobs:
             --query 'deployments[0]' \
             --output text)
           
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ]; then
+            echo "❌ Failed to create deployment!"
+            echo "deployment-id=FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
           echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
           echo "🎨 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
+        if: steps.deployment.outputs.deployment-id != 'FAILED'
         run: |
           chmod +x scripts/wait-for-deployment.sh
           ./scripts/wait-for-deployment.sh \
@@ -273,17 +296,23 @@ jobs:
       - name: Deployment summary
         if: always()
         run: |
-          STATUS=$(aws deploy get-deployment \
-            --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
-            --query 'deploymentInfo.status' \
-            --output text)
+          if [ "${{ steps.deployment.outputs.deployment-id }}" == "FAILED" ]; then
+            STATUS="❌ Failed to create deployment"
+            DEPLOYMENT_ID="N/A"
+          else
+            STATUS=$(aws deploy get-deployment \
+              --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
+              --query 'deploymentInfo.status' \
+              --output text 2>/dev/null || echo "Unknown")
+            DEPLOYMENT_ID="${{ steps.deployment.outputs.deployment-id }}"
+          fi
           
           echo "## 🎨 UI Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ needs.prepare-deployment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment ID:** ${{ steps.deployment.outputs.deployment-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment ID:** ${DEPLOYMENT_ID}" >> $GITHUB_STEP_SUMMARY
 
   deploy-central:
     name: Deploy Central Service
@@ -298,7 +327,6 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
@@ -332,6 +360,7 @@ jobs:
           image: ${{ steps.login-ecr.outputs.registry }}/sentinel-mas-central:${{ needs.prepare-deployment.outputs.version }}
       
       - name: Deploy with CodeDeploy (Blue/Green Canary)
+        id: codedeploy
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
@@ -346,6 +375,8 @@ jobs:
       - name: Get deployment ID
         id: deployment
         run: |
+          sleep 5
+          
           DEPLOYMENT_ID=$(aws deploy list-deployments \
             --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-dg \
@@ -353,10 +384,17 @@ jobs:
             --query 'deployments[0]' \
             --output text)
           
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ]; then
+            echo "❌ Failed to create deployment!"
+            echo "deployment-id=FAILED" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
           echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
           echo "📡 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
+        if: steps.deployment.outputs.deployment-id != 'FAILED'
         run: |
           chmod +x scripts/wait-for-deployment.sh
           ./scripts/wait-for-deployment.sh \
@@ -367,17 +405,23 @@ jobs:
       - name: Deployment summary
         if: always()
         run: |
-          STATUS=$(aws deploy get-deployment \
-            --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
-            --query 'deploymentInfo.status' \
-            --output text)
+          if [ "${{ steps.deployment.outputs.deployment-id }}" == "FAILED" ]; then
+            STATUS="❌ Failed to create deployment"
+            DEPLOYMENT_ID="N/A"
+          else
+            STATUS=$(aws deploy get-deployment \
+              --deployment-id ${{ steps.deployment.outputs.deployment-id }} \
+              --query 'deploymentInfo.status' \
+              --output text 2>/dev/null || echo "Unknown")
+            DEPLOYMENT_ID="${{ steps.deployment.outputs.deployment-id }}"
+          fi
           
           echo "## 📡 Central Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ needs.prepare-deployment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ needs.prepare-deployment.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment ID:** ${{ steps.deployment.outputs.deployment-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment ID:** ${DEPLOYMENT_ID}" >> $GITHUB_STEP_SUMMARY
 
   notify:
     name: Send Notifications
@@ -405,7 +449,7 @@ jobs:
           fi
       
       - name: Send Slack notification
-        if: always()
+        if: always() && secrets.SLACK_WEBHOOK != ''
         uses: 8398a7/action-slack@v3
         with:
           status: custom
