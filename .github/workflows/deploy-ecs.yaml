@@ -430,6 +430,15 @@ jobs:
     if: always()
     
     steps:
+      - name: Check if Slack webhook exists
+        id: check-slack
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            echo "webhook-exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "webhook-exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Determine overall status
         id: status
         run: |
@@ -449,7 +458,7 @@ jobs:
           fi
       
       - name: Send Slack notification
-        if: always() && secrets.SLACK_WEBHOOK != ''
+        if: steps.check-slack.outputs.webhook-exists == 'true'
         uses: 8398a7/action-slack@v3
         with:
           status: custom
