@@ -155,7 +155,6 @@ jobs:
       - name: Get deployment ID
         id: deployment
         run: |
-          # Wait for deployment to be registered
           sleep 5
           
           DEPLOYMENT_ID=$(aws deploy list-deployments \
@@ -163,15 +162,15 @@ jobs:
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg \
             --max-items 1 \
             --query 'deployments[0]' \
-            --output text)
+            --output text 2>&1 | tr -d '[:space:]')
           
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ]; then
-            echo "❌ Failed to create deployment!"
-            echo "deployment-id=FAILED" >> $GITHUB_OUTPUT
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ] || [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
+            echo "❌ Failed to create deployment or invalid deployment ID: '$DEPLOYMENT_ID'"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           
-          echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "deployment-id=${DEPLOYMENT_ID}" >> "$GITHUB_OUTPUT"
           echo "🚀 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
@@ -271,15 +270,15 @@ jobs:
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-dg \
             --max-items 1 \
             --query 'deployments[0]' \
-            --output text)
+            --output text 2>&1 | tr -d '[:space:]')
           
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ]; then
-            echo "❌ Failed to create deployment!"
-            echo "deployment-id=FAILED" >> $GITHUB_OUTPUT
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ] || [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
+            echo "❌ Failed to create deployment or invalid deployment ID: '$DEPLOYMENT_ID'"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           
-          echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "deployment-id=${DEPLOYMENT_ID}" >> "$GITHUB_OUTPUT"
           echo "🎨 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
@@ -379,15 +378,15 @@ jobs:
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-dg \
             --max-items 1 \
             --query 'deployments[0]' \
-            --output text)
+            --output text 2>&1 | tr -d '[:space:]')
           
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ]; then
-            echo "❌ Failed to create deployment!"
-            echo "deployment-id=FAILED" >> $GITHUB_OUTPUT
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ] || [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
+            echo "❌ Failed to create deployment or invalid deployment ID: '$DEPLOYMENT_ID'"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           
-          echo "deployment-id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+          echo "deployment-id=${DEPLOYMENT_ID}" >> "$GITHUB_OUTPUT"
           echo "📡 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
