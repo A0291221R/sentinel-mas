@@ -152,20 +152,66 @@ jobs:
           codedeploy-application: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app
           codedeploy-deployment-group: sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg
       
+      - name: Debug deployment list
+        run: |
+          echo "=== Raw output ==="
+          aws deploy list-deployments \
+            --application-name sentinel-v2-dev-app \
+            --deployment-group-name sentinel-v2-dev-api-dg \
+            --max-items 1 \
+            --output text
+          
+          echo ""
+          echo "=== JSON output ==="
+          aws deploy list-deployments \
+            --application-name sentinel-v2-dev-app \
+            --deployment-group-name sentinel-v2-dev-api-dg \
+            --max-items 1 \
+            --output json
+          
+          echo ""
+          echo "=== Parsed ==="
+          DEPLOYMENT_ID=$(aws deploy list-deployments \
+            --application-name sentinel-v2-dev-app \
+            --deployment-group-name sentinel-v2-dev-api-dg \
+            --max-items 1 \
+            --output json | jq -r '.deployments[0]')
+          echo "Deployment ID: '$DEPLOYMENT_ID'"
+      
       - name: Get deployment ID
         id: deployment
         run: |
           sleep 5
           
-          DEPLOYMENT_ID=$(aws deploy list-deployments \
+          echo "🔍 Fetching latest deployment ID..."
+          
+          # Get deployments with JSON output
+          DEPLOYMENTS_JSON=$(aws deploy list-deployments \
             --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg \
             --max-items 1 \
-            --query 'deployments[0]' \
-            --output text 2>&1 | tr -d '[:space:]')
+            --output json 2>&1)
           
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ] || [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
-            echo "❌ Failed to create deployment or invalid deployment ID: '$DEPLOYMENT_ID'"
+          # Check if command succeeded
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to list deployments!"
+            echo "Error: $DEPLOYMENTS_JSON"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          # Extract deployment ID using jq
+          DEPLOYMENT_ID=$(echo "$DEPLOYMENTS_JSON" | jq -r '.deployments[0] // empty')
+          
+          # Validate
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "null" ]; then
+            echo "❌ No deployment found!"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          if [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
+            echo "❌ Invalid deployment ID: '$DEPLOYMENT_ID'"
             echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
             exit 1
           fi
@@ -265,21 +311,44 @@ jobs:
         run: |
           sleep 5
           
-          DEPLOYMENT_ID=$(aws deploy list-deployments \
+          echo "🔍 Fetching latest deployment..."
+          
+          # Get deployments with JSON output for better parsing
+          DEPLOYMENTS_JSON=$(aws deploy list-deployments \
             --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
             --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-ui-dg \
             --max-items 1 \
-            --query 'deployments[0]' \
-            --output text 2>&1 | tr -d '[:space:]')
+            --output json 2>&1)
           
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ] || [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
-            echo "❌ Failed to create deployment or invalid deployment ID: '$DEPLOYMENT_ID'"
+          # Check if command succeeded
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to list deployments!"
+            echo "Error output: $DEPLOYMENTS_JSON"
             echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           
+          # Extract deployment ID using jq
+          DEPLOYMENT_ID=$(echo "$DEPLOYMENTS_JSON" | jq -r '.deployments[0] // empty')
+          
+          # Validate deployment ID
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "null" ]; then
+            echo "❌ No deployment found in response"
+            echo "Response was: $DEPLOYMENTS_JSON"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          # Validate format
+          if [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
+            echo "❌ Invalid deployment ID format: '$DEPLOYMENT_ID'"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          # Success
           echo "deployment-id=${DEPLOYMENT_ID}" >> "$GITHUB_OUTPUT"
-          echo "🎨 Deployment ID: ${DEPLOYMENT_ID}"
+          echo "🚀 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
         if: steps.deployment.outputs.deployment-id != 'FAILED'
@@ -373,21 +442,44 @@ jobs:
         run: |
           sleep 5
           
-          DEPLOYMENT_ID=$(aws deploy list-deployments \
-            --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
-            --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-central-dg \
-            --max-items 1 \
-            --query 'deployments[0]' \
-            --output text 2>&1 | tr -d '[:space:]')
+          echo "🔍 Fetching latest deployment..."
           
-          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "None" ] || [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
-            echo "❌ Failed to create deployment or invalid deployment ID: '$DEPLOYMENT_ID'"
+          # Get deployments with JSON output for better parsing
+          DEPLOYMENTS_JSON=$(aws deploy list-deployments \
+            --application-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-app \
+            --deployment-group-name sentinel-v2-${{ needs.prepare-deployment.outputs.environment }}-api-dg \
+            --max-items 1 \
+            --output json 2>&1)
+          
+          # Check if command succeeded
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to list deployments!"
+            echo "Error output: $DEPLOYMENTS_JSON"
             echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           
+          # Extract deployment ID using jq
+          DEPLOYMENT_ID=$(echo "$DEPLOYMENTS_JSON" | jq -r '.deployments[0] // empty')
+          
+          # Validate deployment ID
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" == "null" ]; then
+            echo "❌ No deployment found in response"
+            echo "Response was: $DEPLOYMENTS_JSON"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          # Validate format
+          if [[ ! "$DEPLOYMENT_ID" =~ ^d-[A-Z0-9]+$ ]]; then
+            echo "❌ Invalid deployment ID format: '$DEPLOYMENT_ID'"
+            echo "deployment-id=FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          # Success
           echo "deployment-id=${DEPLOYMENT_ID}" >> "$GITHUB_OUTPUT"
-          echo "📡 Deployment ID: ${DEPLOYMENT_ID}"
+          echo "🚀 Deployment ID: ${DEPLOYMENT_ID}"
       
       - name: Monitor deployment
         if: steps.deployment.outputs.deployment-id != 'FAILED'
