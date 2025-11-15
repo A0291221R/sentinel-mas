@@ -420,7 +420,7 @@ jobs:
           echo "**Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment ID:** ${DEPLOYMENT_ID}" >> $GITHUB_STEP_SUMMARY
 
-   notify:
+  notify:
     name: Send Notifications
     needs: [prepare-deployment, deploy-api, deploy-ui, deploy-central]
     runs-on: ubuntu-latest
