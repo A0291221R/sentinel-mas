@@ -8,8 +8,9 @@ langchain-openai
 # tavily-python
 
 # ---- Service runtime ----
-fastapi
-uvicorn[standard]
+fastapi>=0.119.0
+uvicorn[standard]>=0.37.0
+starlette>=0.38.6
 httpx
 python-jose[cryptography]
 # pandas
@@ -39,3 +40,5 @@ SQLAlchemy
 # langchain-mcp-adapters
 
 
+# X-Ray
+aws-xray-sdk==2.12.0
