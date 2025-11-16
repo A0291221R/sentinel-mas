@@ -308,11 +308,13 @@ resource "aws_ecs_service" "api" {
     container_port   = 8000
   }
 
+  depends_on = [var.alb_listener, var.alb_listener_rule_api]
+
   lifecycle {
     ignore_changes = [
       load_balancer,  # CodeDeploy switches between blue/green
       # network_configuration,
-      # desired_count,
+      desired_count,
       task_definition # CodeDeploy updates this during deployments
     ]
   }
@@ -349,11 +351,13 @@ resource "aws_ecs_service" "ui" {
     container_port   = 80
   }
 
+  depends_on = [var.alb_listener, var.alb_listener_rule_ui]
+
   lifecycle {
     ignore_changes = [
       load_balancer,  # CodeDeploy switches between blue/green
       # network_configuration,
-      # desired_count,
+      desired_count,
       task_definition # CodeDeploy updates this during deployments
     ]
   }
@@ -390,11 +394,13 @@ resource "aws_ecs_service" "central" {
     container_port   = 8100
   }
 
+  depends_on = [var.alb_listener, var.alb_listener_rule_central]
+
   lifecycle {
     ignore_changes = [
       load_balancer,  # CodeDeploy switches between blue/green
       # network_configuration,
-      # desired_count,
+      desired_count,
       task_definition # CodeDeploy updates this during deployments
     ]
   }

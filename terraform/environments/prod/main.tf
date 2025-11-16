@@ -135,6 +135,10 @@ resource "aws_secretsmanager_secret" "openai_api_key" {
     Name        = "${var.project_name}-${var.environment}-openai-key"
     Environment = var.environment
   }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "openai_api_key" {
@@ -149,11 +153,51 @@ resource "aws_secretsmanager_secret" "langgraph_api_key" {
     Name        = "${var.project_name}-${var.environment}-langgraph-key"
     Environment = var.environment
   }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "langgraph_api_key" {
   secret_id     = aws_secretsmanager_secret.langgraph_api_key.id
   secret_string = var.langgraph_api_key
+}
+
+# For api-service
+resource "aws_secretsmanager_secret" "sentinel_db_url" {
+  name = "${var.environment}/${var.project_name}/sentinel-db-url"
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-sentinel-db-url"
+    Environment = var.environment
+  }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "sentinel_db_url" {
+  secret_id     = aws_secretsmanager_secret.sentinel_db_url.id
+  secret_string = "postgresql://${var.db_username}:${var.db_password}@${module.rds.db_address}:${module.rds.db_port}/${module.rds.db_name}"
+}
+
+# For sentinel-Central
+resource "aws_secretsmanager_secret" "db_url" {
+  name = "${var.environment}/${var.project_name}/db-url"
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-db-url"
+    Environment = var.environment
+  }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "db_url" {
+  secret_id     = aws_secretsmanager_secret.db_url.id
+  secret_string = "postgresql+asyncpg://${var.db_username}:${var.db_password}@${module.rds.db_address}:${module.rds.db_port}/${module.rds.db_name}"
 }
 
 resource "aws_secretsmanager_secret" "api_secret_key" {
@@ -162,6 +206,10 @@ resource "aws_secretsmanager_secret" "api_secret_key" {
   tags = {
     Name        = "${var.project_name}-${var.environment}-api-secret"
     Environment = var.environment
+  }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
   }
 }
 
@@ -190,6 +238,8 @@ module "ecs" {
   ecs_ui_security_group_id      = module.security_groups.ecs_ui_security_group_id
   ecs_central_security_group_id = module.security_groups.ecs_central_security_group_id
 
+  alb_listener = module.alb.listener
+  
   # Database
   db_address              = module.rds.db_address
   db_port                 = module.rds.db_port

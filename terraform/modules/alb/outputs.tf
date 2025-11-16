@@ -90,3 +90,28 @@ output "central_green_target_group_name" {
   description = "Central green target group name"
   value       = aws_lb_target_group.central_green.name
 }
+
+output "certificate_arn" {
+  value = var.certificate_arn
+}
+
+output "listener" {
+  description = "ALB listener for ECS dependency"
+  value       = aws_lb_listener.http
+}
+
+# Add outputs for listener rules:
+output "listener_rule_api" {
+  description = "Listener rule for API service"
+  value       = aws_lb_listener_rule.api_http  # Use your actual resource name
+}
+
+output "listener_rule_ui" {
+  description = "Listener rule for UI service"
+  value       = aws_lb_listener_rule.ui_http
+}
+
+output "listener_rule_central" {
+  description = "Listener rule for Central service"
+  value       = aws_lb_listener_rule.central_http
+}

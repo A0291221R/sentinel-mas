@@ -87,6 +87,11 @@ resource "aws_secretsmanager_secret" "db_password" {
     Name        = "${var.project_name}-${var.environment}-db-password"
     Environment = var.environment
   }
+  
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {

@@ -245,3 +245,28 @@ variable "log_retention_days" {
   type        = number
   default     = 30
 }
+
+variable "alb_listener" {
+  description = "ALB listener resource"
+  type        = any
+  default     = null
+}
+
+# Add these new variables:
+variable "alb_listener_rule_api" {
+  description = "ALB listener rule for API service"
+  type        = any
+  default     = null
+}
+
+variable "alb_listener_rule_ui" {
+  description = "ALB listener rule for UI service"
+  type        = any
+  default     = null
+}
+
+variable "alb_listener_rule_central" {
+  description = "ALB listener rule for Central service"
+  type        = any
+  default     = null
+}

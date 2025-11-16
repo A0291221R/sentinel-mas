@@ -135,6 +135,10 @@ resource "aws_secretsmanager_secret" "openai_api_key" {
     Name        = "${var.project_name}-${var.environment}-openai-key"
     Environment = var.environment
   }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "openai_api_key" {
@@ -148,6 +152,10 @@ resource "aws_secretsmanager_secret" "langgraph_api_key" {
   tags = {
     Name        = "${var.project_name}-${var.environment}-langgraph-key"
     Environment = var.environment
+  }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
   }
 }
 
@@ -163,6 +171,10 @@ resource "aws_secretsmanager_secret" "sentinel_db_url" {
     Name        = "${var.project_name}-${var.environment}-sentinel-db-url"
     Environment = var.environment
   }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "sentinel_db_url" {
@@ -177,6 +189,10 @@ resource "aws_secretsmanager_secret" "db_url" {
     Name        = "${var.project_name}-${var.environment}-db-url"
     Environment = var.environment
   }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "db_url" {
@@ -190,6 +206,10 @@ resource "aws_secretsmanager_secret" "api_secret_key" {
   tags = {
     Name        = "${var.project_name}-${var.environment}-api-secret"
     Environment = var.environment
+  }
+  recovery_window_in_days = 0
+  lifecycle {
+    prevent_destroy = false
   }
 }
 
@@ -217,6 +237,14 @@ module "ecs" {
   ecs_api_security_group_id     = module.security_groups.ecs_api_security_group_id
   ecs_ui_security_group_id      = module.security_groups.ecs_ui_security_group_id
   ecs_central_security_group_id = module.security_groups.ecs_central_security_group_id
+
+  # Listener dependency  
+  alb_listener = module.alb.listener
+  
+  # Add listener rule dependencies
+  alb_listener_rule_api     = module.alb.listener_rule_api
+  alb_listener_rule_ui      = module.alb.listener_rule_ui
+  alb_listener_rule_central = module.alb.listener_rule_central
 
   # Database
   db_address              = module.rds.db_address
@@ -274,7 +302,15 @@ module "codedeploy" {
   environment          = var.environment
   cluster_name         = module.ecs.cluster_name
   codedeploy_role_arn  = module.iam.codedeploy_role_arn
-  listener_arn         = module.alb.listener_arn
+  # listener_arn         = module.alb.listener_arn
+  # IMPORTANT:
+  # - No cert: HTTP listener (port 80) is used for traffic switching
+  # - Cert present: HTTPS listener (port 443) is used for traffic switching
+  listener_arn = (
+    module.alb.certificate_arn != ""
+    ? module.alb.https_listener_arn
+    : module.alb.listener_arn
+  )
 
   # API
   api_service_name            = module.ecs.api_service_name

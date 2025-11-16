@@ -94,9 +94,9 @@ resource "aws_lb_target_group" "ui_blue" {
     matcher             = "200-299"
   }
 
-  lifecycle {
-    create_before_destroy = true  # Create new before deleting old
-  }
+  # lifecycle {
+  #   create_before_destroy = true  # Create new before deleting old
+  # }
 
   deregistration_delay = 30
 
@@ -124,9 +124,9 @@ resource "aws_lb_target_group" "ui_green" {
     matcher             = "200-299"
   }
 
-  lifecycle {
-    create_before_destroy = true  # Create new before deleting old
-  }
+  # lifecycle {
+  #   create_before_destroy = true  # Create new before deleting old
+  # }
 
   deregistration_delay = 30
 
@@ -194,55 +194,55 @@ resource "aws_lb_target_group" "central_green" {
 # ============================================
 # HTTP Listener (Redirect to HTTPS if certificate provided)
 # ============================================
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = "80"
-  protocol          = "HTTP"
-
-  default_action {
-    type = var.certificate_arn != "" ? "redirect" : "forward"
-    
-    # Only set target_group_arn when forwarding (no certificate)
-    target_group_arn = var.certificate_arn == "" ? aws_lb_target_group.ui_blue.arn : null
-
-    # Redirect config (only when certificate exists)
-    dynamic "redirect" {
-      for_each = var.certificate_arn != "" ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-  }
-}
 # resource "aws_lb_listener" "http" {
 #   load_balancer_arn = aws_lb.main.arn
 #   port              = "80"
 #   protocol          = "HTTP"
 
+#   # Default action returns 404 - all traffic goes through rules
 #   default_action {
-#     type = var.certificate_arn != "" ? "redirect" : "fixed-response"
-
-#     dynamic "redirect" {
-#       for_each = var.certificate_arn != "" ? [1] : []
-#       content {
-#         port        = "443"
-#         protocol    = "HTTPS"
-#         status_code = "HTTP_301"
-#       }
-#     }
-
-#     dynamic "fixed_response" {
-#       for_each = var.certificate_arn == "" ? [1] : []
-#       content {
-#         content_type = "text/plain"
-#         message_body = "Service not found"
-#         status_code  = "404"
-#       }
+#     type = "fixed-response"
+    
+#     fixed_response {
+#       content_type = "text/plain"
+#       message_body = "Service not found"
+#       status_code  = "404"
 #     }
 #   }
 # }
+
+# resource "aws_lb_listener" "http" {
+#   load_balancer_arn = aws_lb.main.arn
+#   port              = 80
+#   protocol          = "HTTP"
+
+#   # Default action for the HTTP listener: Redirect everything to HTTPS
+#   default_action {
+#     type = "redirect"
+#     redirect {
+#       port        = "443"
+#       protocol    = "HTTPS"
+#       status_code = "HTTP_301"
+#     }
+#   }
+# }
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  # Default action needed for Terraform compliance, CodeDeploy overwrites rules later
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.ui_blue.arn # or a placeholder TG
+  }
+
+  lifecycle {
+    ignore_changes = [default_action]  # CodeDeploy manages this
+  }
+}
+
 
 # ============================================
 # HTTPS Listener (if certificate provided)
@@ -255,13 +255,14 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = var.certificate_arn
 
+  # Default action needed for Terraform compliance, CodeDeploy overwrites rules later
   default_action {
-    type = "fixed-response"
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "Service not found"
-      status_code  = "404"
-    }
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.ui_blue.arn # or a placeholder TG
+  }
+
+  lifecycle {
+    ignore_changes = [default_action]  # CodeDeploy manages this
   }
 }
 
@@ -273,18 +274,8 @@ resource "aws_lb_listener_rule" "api_http" {
   priority     = 100
 
   action {
-    type             = var.certificate_arn != "" ? "redirect" : "forward"
-    
-    dynamic "redirect" {
-      for_each = var.certificate_arn != "" ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-
-    target_group_arn = var.certificate_arn == "" ? aws_lb_target_group.api_blue.arn : null
+    type = "forward"
+    target_group_arn = aws_lb_target_group.api_blue.arn
   }
 
   condition {
@@ -292,57 +283,62 @@ resource "aws_lb_listener_rule" "api_http" {
       values = ["/api/*"]
     }
   }
+
+  lifecycle {
+    ignore_changes = [action]
+  }
+
+  tags = {
+    Name = "API HTTP Rule"
+  }
 }
 
-# resource "aws_lb_listener_rule" "ui_http" {
-#   listener_arn = aws_lb_listener.http.arn
-#   priority     = 200
+resource "aws_lb_listener_rule" "ui_http" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 200
 
-#   action {
-#     type             = var.certificate_arn != "" ? "redirect" : "forward"
-    
-#     dynamic "redirect" {
-#       for_each = var.certificate_arn != "" ? [1] : []
-#       content {
-#         port        = "443"
-#         protocol    = "HTTPS"
-#         status_code = "HTTP_301"
-#       }
-#     }
+  action {
+    type = "forward"
+    target_group_arn = aws_lb_target_group.ui_blue.arn
+  }
 
-#     target_group_arn = var.certificate_arn == "" ? aws_lb_target_group.ui_blue.arn : null
-#   }
+  condition {
+    path_pattern {
+      values = ["/*"]
+    }
+  }
 
-#   condition {
-#     path_pattern {
-#       values = ["/"]
-#     }
-#   }
-# }
+  # CRITICAL: Let CodeDeploy manage target group switching
+  lifecycle {
+    ignore_changes = [action]
+  }
+
+  tags = {
+    Name = "UI HTTP Rule"
+  }
+}
 
 resource "aws_lb_listener_rule" "central_http" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 101
 
   action {
-    type             = var.certificate_arn != "" ? "redirect" : "forward"
-    
-    dynamic "redirect" {
-      for_each = var.certificate_arn != "" ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-
-    target_group_arn = var.certificate_arn == "" ? aws_lb_target_group.central_blue.arn : null
+    type = "forward"
+    target_group_arn = aws_lb_target_group.central_blue.arn
   }
 
   condition {
     path_pattern {
       values = ["/tracking/*"]
     }
+  }
+
+  lifecycle {
+    ignore_changes = [action]
+  }
+
+  tags = {
+    Name = "Central HTTP Rule"
   }
 }
 
@@ -355,7 +351,7 @@ resource "aws_lb_listener_rule" "api_https" {
   priority     = 100
 
   action {
-    type             = "forward"
+    type = "forward"
     target_group_arn = aws_lb_target_group.api_blue.arn
   }
 
@@ -363,6 +359,14 @@ resource "aws_lb_listener_rule" "api_https" {
     path_pattern {
       values = ["/api/*"]
     }
+  }
+
+  lifecycle {
+    ignore_changes = [action[0].target_group_arn]
+  }
+
+  tags = {
+    Name = "API HTTPS Rule"
   }
 }
 
@@ -378,8 +382,16 @@ resource "aws_lb_listener_rule" "ui_https" {
 
   condition {
     path_pattern {
-      values = ["/"]
+      values = ["/*"]
     }
+  }
+
+  lifecycle {
+    ignore_changes = [action[0].target_group_arn]
+  }
+
+  tags = {
+    Name = "UI HTTPS Rule"
   }
 }
 
@@ -397,5 +409,13 @@ resource "aws_lb_listener_rule" "central_https" {
     path_pattern {
       values = ["/tracking/*"]
     }
+  }
+
+  lifecycle {
+    ignore_changes = [action[0].target_group_arn]
+  }
+
+  tags = {
+    Name = "Central HTTPS Rule"
   }
 }
