@@ -11,10 +11,10 @@ Resources:
         NetworkConfiguration:
           AwsvpcConfiguration:
             Subnets:
-              - subnet-02e57f4f82a7b6d89
-              - subnet-0f55da27c82840a3e
+              - subnet-00d4c1a2055c8c836
+              - subnet-0b9287d15a18707da
             SecurityGroups:
-              - sg-023c45399fc509929
+              - sg-01bb5d1995e4ace3f
             AssignPublicIp: "ENABLED"
 
 Hooks:
