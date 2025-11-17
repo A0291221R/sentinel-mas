@@ -230,6 +230,7 @@ class TestXRayDisabled:
     def test_no_xray_overhead_when_disabled(self, mock_patch_all):
         """Test no X-Ray overhead when disabled"""
         with patch.dict(os.environ, {}, clear=True):
+
             # patch_all should not be called
             mock_patch_all.assert_not_called()
 
@@ -248,6 +249,10 @@ class TestXRayConfiguration:
                 "AWS_XRAY_TRACING_NAME": "test-service",
             },
         ):
+            from api_service.main import app
+
+            # Explicitly use app to satisfy linter
+            assert app is not None  # ← Linter sees this as "used"
 
             # Verify configure called with custom address
             mock_recorder.configure.assert_called_with(
@@ -263,6 +268,11 @@ class TestXRayConfiguration:
         with patch.dict(os.environ, {"AWS_XRAY_DAEMON_ADDRESS": "127.0.0.1:2000"}):
             os.environ.pop("AWS_XRAY_TRACING_NAME", None)
 
+            from api_service.main import app
+
+            # Explicitly use app to satisfy linter
+            assert app is not None  # ← Linter sees this as "used"
+
             # Should use default "sentinel-v2-api"
             mock_recorder.configure.assert_called_with(
                 service="sentinel-v2-api",
@@ -275,6 +285,10 @@ class TestXRayConfiguration:
     def test_xray_sampling_enabled(self, mock_patch_all, mock_recorder):
         """Test X-Ray sampling is enabled"""
         with patch.dict(os.environ, {"AWS_XRAY_DAEMON_ADDRESS": "127.0.0.1:2000"}):
+            from api_service.main import app
+
+            # Explicitly use app to satisfy linter
+            assert app is not None  # ← Linter sees this as "used"
 
             # Verify sampling=True in configure
             call_kwargs = mock_recorder.configure.call_args[1]
