@@ -31,7 +31,7 @@ app = FastAPI(
 )
 
 # Only enable X-Ray in ECS/production
-IS_XRAY_ENABLED = os.getenv('AWS_XRAY_DAEMON_ADDRESS') is not None
+IS_XRAY_ENABLED = os.getenv("AWS_XRAY_DAEMON_ADDRESS") is not None
 if IS_XRAY_ENABLED:
     # Patch libraries only in production
     patch_all()
@@ -45,17 +45,22 @@ if IS_XRAY_ENABLED:
 
     # Custom X-Ray Middleware
     class XRayMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Any:
+        async def dispatch(
+            self, request: Request, call_next: RequestResponseEndpoint
+        ) -> Any:
             # Start X-Ray segment
             segment = xray_recorder.begin_segment(
-                name=os.getenv("AWS_XRAY_TRACING_NAME", "sentinel-v2-api"), sampling=True
+                name=os.getenv("AWS_XRAY_TRACING_NAME", "sentinel-v2-api"),
+                sampling=True,
             )
 
             try:
                 # Add request metadata
                 segment.put_http_meta("url", str(request.url))
                 segment.put_http_meta("method", request.method)
-                segment.put_http_meta("user_agent", request.headers.get("user-agent", ""))
+                segment.put_http_meta(
+                    "user_agent", request.headers.get("user-agent", "")
+                )
 
                 # Process request
                 response = await call_next(request)
