@@ -91,6 +91,8 @@ module "alb" {
   vpc_id                = module.networking.vpc_id
   public_subnet_ids     = module.networking.public_subnet_ids
   alb_security_group_id = module.security_groups.alb_security_group_id
+  
+  enable_https          = var.enable_https
   certificate_arn       = var.enable_https ? module.acm[0].certificate_arn : ""
 }
 
@@ -311,6 +313,7 @@ module "codedeploy" {
     ? module.alb.https_listener_arn
     : module.alb.listener_arn
   )
+  https_listener_arn = module.alb.https_listener_arn
 
   # API
   api_service_name            = module.ecs.api_service_name

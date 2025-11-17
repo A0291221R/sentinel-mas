@@ -30,7 +30,7 @@ output "listener_arn" {
 
 output "https_listener_arn" {
   description = "HTTPS listener ARN (if certificate provided)"
-  value       = var.certificate_arn != "" ? aws_lb_listener.https[0].arn : null
+  value       = var.enable_https ? aws_lb_listener.https[0].arn : null  # ← Use boolean
 }
 
 # API Target Groups

@@ -6,7 +6,7 @@ echo "🚀 Starting linting process..."
 
 # Mypy configuration
 CHECK_PATHS="sentinel_mas api_service tests"
-MYPY_CONFIG="--count --show-source --format='::error file=%(path)s,line=%(row)d,col=%(col)d::%(code)s: %(text)s' --python-version 3.12"
+# MYPY_CONFIG="--count --show-source --python-version 3.12"
 run_linter() {
     local name=$1
     local check_cmd=$2
@@ -39,10 +39,10 @@ if [ "$1" = "--fix" ]; then
     echo "🔧 Running in FIX mode"
 fi
 
-run_linter "Black" "black --check ." "black $CHECK_PATHS" &
-run_linter "isort" "isort --check-only ." "isort $CHECK_PATHS" &
+run_linter "Black" "black --check $CHECK_PATHS" "black $CHECK_PATHS" &
+run_linter "isort" "isort --check-only $CHECK_PATHS" "isort $CHECK_PATHS" &
 run_linter "flake8" "flake8 $CHECK_PATHS --count --show-source --statistics" "echo 'flake8: fix errors manually'" &
-run_linter "mypy" "mypy $CHECK_PATHS $MYPY_CONFIG" "echo 'mypy: fix errors manually'" &
+run_linter "mypy" "mypy $CHECK_PATHS" "echo 'mypy: fix errors manually'" &
 
 wait
 
