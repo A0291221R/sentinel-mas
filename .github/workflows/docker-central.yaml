@@ -2,14 +2,14 @@ name: Stage 4b - Build Sentinel Central Docker Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - 'sentinel_central/**'
       - '.github/workflows/docker-central.yaml'
   workflow_run:
     workflows: ["Stage 3 - Build API Docker Image"]
     types: [completed]
-    branches: [main]
+    branches: [main, develop]
   release:
     types: [published]
   workflow_dispatch:

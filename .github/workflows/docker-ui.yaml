@@ -2,14 +2,14 @@ name: Stage 4 - Build UI Docker Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - 'chatbot_ui/**'
       - '.github/workflows/docker-ui.yaml'
   workflow_run:
     workflows: ["Stage 3 - Build API Docker Image"]
     types: [completed]
-    branches: [main]
+    branches: [main, develop]
   release:
     types: [published]
   workflow_dispatch:

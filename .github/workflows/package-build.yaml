@@ -2,7 +2,7 @@ name: Stage 2 - Package Building & Publishing
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - 'sentinel_mas/**'
       - 'pyproject.toml'
@@ -394,7 +394,7 @@ jobs:
     name: "Publish to Test PyPI"
     runs-on: ubuntu-latest
     needs: [version-check, build-package, test-package]
-    if: needs.version-check.outputs.is_release == 'false' && github.ref == 'refs/heads/main'
+    if: needs.version-check.outputs.is_release == 'false' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     environment:
       name: test-pypi
       url: https://test.pypi.org/p/sentinel-mas
