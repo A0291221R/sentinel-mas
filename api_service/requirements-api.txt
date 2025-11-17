@@ -16,3 +16,4 @@ types-python-jose
 
 # X-ray
 aws-xray-sdk==2.12.0
+types-aws-xray-sdk

@@ -17,6 +17,38 @@ If you haven't already created a hosted zone for your domain:
 aws route53 create-hosted-zone \
   --name sentinel-mas.com \
   --caller-reference $(date +%s)
+  
+~~~~ output
+$ aws route53 create-hosted-zone \
+  --name sentinel-mas.com \
+  --caller-reference $(date +%s)
+{
+    "Location": "https://route53.amazonaws.com/2013-04-01/hostedzone/Z06114582K0WYSHVRQNZ7",
+    "HostedZone": {
+        "Id": "/hostedzone/Z06114582K0WYSHVRQNZ7",
+        "Name": "sentinel-mas.com.",
+        "CallerReference": "1763303929",
+        "Config": {
+            "PrivateZone": false
+        },
+        "ResourceRecordSetCount": 2
+    },
+    "ChangeInfo": {
+        "Id": "/change/C058976830TLM3B3EJNEG",
+        "Status": "PENDING",
+        "SubmittedAt": "2025-11-16T14:38:50.499000+00:00"
+    },
+    "DelegationSet": {
+        "NameServers": [
+            "ns-349.awsdns-43.com",
+            "ns-1528.awsdns-63.org",
+            "ns-729.awsdns-27.net",
+            "ns-1543.awsdns-00.co.uk"
+        ]
+    }
+}
+  
+  
 
 # Get nameservers
 aws route53 list-hosted-zones | grep sentinel-mas.com -A 10

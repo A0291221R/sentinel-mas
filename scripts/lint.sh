@@ -5,8 +5,8 @@ set -e
 echo "🚀 Starting linting process..."
 
 # Mypy configuration
-MYPY_CONFIG="--explicit-package-bases --namespace-packages --python-version 3.12"
-
+CHECK_PATHS="sentinel_mas api_service tests"
+MYPY_CONFIG="--count --show-source --format='::error file=%(path)s,line=%(row)d,col=%(col)d::%(code)s: %(text)s' --python-version 3.12"
 run_linter() {
     local name=$1
     local check_cmd=$2
@@ -16,7 +16,7 @@ run_linter() {
     
     if [ "$1" = "mypy" ]; then
         # Use custom config for mypy
-        check_cmd="mypy . $MYPY_CONFIG"
+        check_cmd="mypy $CHECK_PATHS $MYPY_CONFIG"
     fi
     
     if [ "$FIX_MODE" = true ] && [ "$1" != "mypy" ] && [ "$1" != "flake8" ]; then
@@ -39,10 +39,10 @@ if [ "$1" = "--fix" ]; then
     echo "🔧 Running in FIX mode"
 fi
 
-run_linter "Black" "black --check ." "black ." &
-run_linter "isort" "isort --check-only ." "isort ." &
-run_linter "flake8" "flake8 . --count --show-source --statistics" "echo 'flake8: fix errors manually'" &
-run_linter "mypy" "mypy . $MYPY_CONFIG" "echo 'mypy: fix errors manually'" &
+run_linter "Black" "black --check ." "black $CHECK_PATHS" &
+run_linter "isort" "isort --check-only ." "isort $CHECK_PATHS" &
+run_linter "flake8" "flake8 $CHECK_PATHS --count --show-source --statistics" "echo 'flake8: fix errors manually'" &
+run_linter "mypy" "mypy $CHECK_PATHS $MYPY_CONFIG" "echo 'mypy: fix errors manually'" &
 
 wait
 

@@ -104,6 +104,14 @@ resource "aws_ecs_task_definition" "api" {
         {
             "name": "LOG_LEVEL",
             "value": "INFO"
+        },
+        {
+          name  = "AWS_XRAY_DAEMON_ADDRESS"
+          value = "127.0.0.1:2000"
+        },
+        {
+          name  = "AWS_XRAY_TRACING_NAME"
+          value = "${var.project_name}-${var.environment}-api"
         }
       ]
 
@@ -133,7 +141,8 @@ resource "aws_ecs_task_definition" "api" {
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
-      }
+      },
+      
 
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
@@ -141,6 +150,29 @@ resource "aws_ecs_task_definition" "api" {
         timeout     = 5
         retries     = 3
         startPeriod = 60
+      }
+    },
+    {
+      name      = "xray-daemon"
+      image     = "public.ecr.aws/xray/aws-xray-daemon:latest"
+      cpu       = 32
+      memory    = 256
+      essential = true
+
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.environment}/xray-daemon"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "xray"
+        }
       }
     }
   ])
@@ -248,6 +280,14 @@ resource "aws_ecs_task_definition" "central" {
           name  = "ENVIRONMENT"
           value = var.environment
         },
+        {
+          name  = "AWS_XRAY_DAEMON_ADDRESS"
+          value = "127.0.0.1:2000"
+        },
+        {
+          name  = "AWS_XRAY_TRACING_NAME"
+          value = "${var.project_name}-${var.environment}-central"
+        }
       ]
 
       secrets = [
@@ -272,6 +312,29 @@ resource "aws_ecs_task_definition" "central" {
         timeout     = 5
         retries     = 3
         startPeriod = 60
+      }
+    },
+    {
+      name      = "xray-daemon"
+      image     = "public.ecr.aws/xray/aws-xray-daemon:latest"
+      cpu       = 32
+      memory    = 256
+      essential = true
+
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/${var.environment}/xray-daemon"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "xray"
+        }
       }
     }
   ])

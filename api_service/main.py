@@ -4,13 +4,13 @@ Sentinel MAS API Service
 Main FastAPI application entry point.
 """
 
+import os
 from typing import Any, Dict
 
+from aws_xray_sdk.core import patch_all, xray_recorder
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from aws_xray_sdk.core import xray_recorder, patch_all
-from starlette.middleware.base import BaseHTTPMiddleware
-import os
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from .config import get_api_config
 from .models import HealthResponse
@@ -18,15 +18,6 @@ from .routers import admin, auth, queries
 
 # Get API configuration
 config = get_api_config()
-
-patch_all()
-
-# Configure X-Ray
-xray_recorder.configure(
-    service=os.getenv('AWS_XRAY_TRACING_NAME', 'sentinel-v2-api'),
-    daemon_address=os.getenv('AWS_XRAY_DAEMON_ADDRESS', 'xray-daemon:2000'),
-    sampling=True
-)
 
 # Create FastAPI application
 app = FastAPI(
@@ -39,37 +30,53 @@ app = FastAPI(
     redoc_url="/redoc",  # ReDoc UI
 )
 
-# Custom X-Ray Middleware
-class XRayMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Start X-Ray segment
-        segment = xray_recorder.begin_segment(
-            name=os.getenv('AWS_XRAY_TRACING_NAME', 'sentinel-mas-api'),
-            sampling=True
-        )
-        
-        try:
-            # Add request metadata
-            segment.put_http_meta('url', str(request.url))
-            segment.put_http_meta('method', request.method)
-            segment.put_http_meta('user_agent', request.headers.get('user-agent', ''))
-            
-            # Process request
-            response = await call_next(request)
-            
-            # Add response metadata
-            segment.put_http_meta('status', response.status_code)
-            
-            return response
-            
-        except Exception as e:
-            # Record exception
-            segment.put_annotation('error', str(e))
-            raise
-            
-        finally:
-            # Always end segment
-            xray_recorder.end_segment()
+# Only enable X-Ray in ECS/production
+IS_XRAY_ENABLED = os.getenv('AWS_XRAY_DAEMON_ADDRESS') is not None
+if IS_XRAY_ENABLED:
+    # Patch libraries only in production
+    patch_all()
+
+    # Configure X-Ray
+    xray_recorder.configure(
+        service=os.getenv("AWS_XRAY_TRACING_NAME", "sentinel-v2-api"),
+        daemon_address=os.getenv("AWS_XRAY_DAEMON_ADDRESS", "127.0.0.1:2000"),
+        sampling=True,
+    )
+
+    # Custom X-Ray Middleware
+    class XRayMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Any:
+            # Start X-Ray segment
+            segment = xray_recorder.begin_segment(
+                name=os.getenv("AWS_XRAY_TRACING_NAME", "sentinel-v2-api"), sampling=True
+            )
+
+            try:
+                # Add request metadata
+                segment.put_http_meta("url", str(request.url))
+                segment.put_http_meta("method", request.method)
+                segment.put_http_meta("user_agent", request.headers.get("user-agent", ""))
+
+                # Process request
+                response = await call_next(request)
+
+                # Add response metadata
+                segment.put_http_meta("status", response.status_code)
+
+                return response
+
+            except Exception as e:
+                # Record exception
+                segment.put_annotation("error", str(e))
+                raise
+
+            finally:
+                # Always end segment
+                xray_recorder.end_segment()
+
+    # Add X-Ray middleware using ASGI
+    app.add_middleware(XRayMiddleware)
+
 
 # CORS middleware - allows cross-origin requests
 app.add_middleware(
@@ -79,8 +86,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
-# Add X-Ray middleware using ASGI
-app.add_middleware(XRayMiddleware)
 
 # Include routers
 # Each router handles a group of related endpoints

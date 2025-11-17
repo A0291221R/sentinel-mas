@@ -3,6 +3,11 @@ output "alb_id" {
   value       = aws_lb.main.id
 }
 
+output "alb_arn_suffix" {
+  description = "ARN suffix of the ALB for use with CloudWatch metrics"
+  value       = aws_lb.main.arn_suffix
+}
+
 output "alb_arn" {
   description = "ALB ARN"
   value       = aws_lb.main.arn
