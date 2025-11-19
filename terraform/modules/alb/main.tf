@@ -191,57 +191,44 @@ resource "aws_lb_target_group" "central_green" {
   }
 }
 
-# ============================================
-# HTTP Listener (Redirect to HTTPS if certificate provided)
-# ============================================
-# resource "aws_lb_listener" "http" {
-#   load_balancer_arn = aws_lb.main.arn
-#   port              = "80"
-#   protocol          = "HTTP"
-
-#   # Default action returns 404 - all traffic goes through rules
-#   default_action {
-#     type = "fixed-response"
-    
-#     fixed_response {
-#       content_type = "text/plain"
-#       message_body = "Service not found"
-#       status_code  = "404"
-#     }
-#   }
-# }
-
-# resource "aws_lb_listener" "http" {
-#   load_balancer_arn = aws_lb.main.arn
-#   port              = 80
-#   protocol          = "HTTP"
-
-#   # Default action for the HTTP listener: Redirect everything to HTTPS
-#   default_action {
-#     type = "redirect"
-#     redirect {
-#       port        = "443"
-#       protocol    = "HTTPS"
-#       status_code = "HTTP_301"
-#     }
-#   }
-# }
-
+# Use this when implemented https
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
 
-  # Default action needed for Terraform compliance, CodeDeploy overwrites rules later
+  # Simple redirect - no forward action, no target groups
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ui_blue.arn # or a placeholder TG
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
-
-  lifecycle {
-    ignore_changes = [default_action]  # CodeDeploy manages this
-  }
+  
+  # No lifecycle block needed - CodeDeploy doesn't touch this
+  # No listener rules needed - everything redirects
 }
+
+# ============================================
+# HTTP Listener (Redirect to HTTPS if certificate provided)
+# ============================================
+# resource "aws_lb_listener" "http" {
+#   load_balancer_arn = aws_lb.main.arn
+#   port              = 80
+#   protocol          = "HTTP"
+
+#   # Default action needed for Terraform compliance, CodeDeploy overwrites rules later
+#   default_action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.ui_blue.arn # or a placeholder TG
+#   }
+
+#   lifecycle {
+#     ignore_changes = [default_action]  # CodeDeploy manages this
+#   }
+# }
 
 
 # ============================================

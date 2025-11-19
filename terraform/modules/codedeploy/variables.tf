@@ -19,7 +19,12 @@ variable "codedeploy_role_arn" {
 }
 
 variable "listener_arn" {
-  description = "ALB listener ARN"
+  description = "ALB HTTP listener ARN"
+  type        = string
+}
+
+variable "https_listener_arn" {
+  description = "ALB HTTPS listener ARN"
   type        = string
 }
 

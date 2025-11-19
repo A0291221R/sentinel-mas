@@ -43,11 +43,9 @@ resource "aws_codedeploy_deployment_group" "api" {
 
   load_balancer_info {
     target_group_pair_info {
-      # ⚠️ CRITICAL: Include BOTH HTTP and HTTPS listener ARNs
-      listener_arns = compact([
-        aws_lb_listener.http.arn,                    # HTTP listener
-        try(aws_lb_listener.https[0].arn, null)      # HTTPS listener (if enabled)
-      ])
+      prod_traffic_route {
+        listener_arns = [var.listener_arn]
+      }
 
       target_group {
         name = var.api_blue_target_group_name
